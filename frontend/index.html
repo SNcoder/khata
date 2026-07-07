@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Site Khata — Material &amp; Accounts</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- SVG icon sprite (referenced via <use>) -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-book" viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></symbol>
+    <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></symbol>
+    <symbol id="i-box" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></symbol>
+    <symbol id="i-truck" viewBox="0 0 24 24"><rect x="1" y="3" width="15" height="13" rx="1"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></symbol>
+    <symbol id="i-tool" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></symbol>
+    <symbol id="i-users" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+    <symbol id="i-card" viewBox="0 0 24 24"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></symbol>
+    <symbol id="i-wallet" viewBox="0 0 24 24"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4z"/></symbol>
+    <symbol id="i-in-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="8 12 12 16 16 12"/><line x1="12" y1="8" x2="12" y2="16"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></symbol>
+    <symbol id="i-inbox" viewBox="0 0 24 24"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></symbol>
+    <symbol id="i-trend" viewBox="0 0 24 24"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></symbol>
+    <symbol id="i-layers" viewBox="0 0 24 24"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></symbol>
+    <symbol id="i-list" viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></symbol>
+    <symbol id="i-check-circle" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></symbol>
+    <symbol id="i-pin" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></symbol>
+    <symbol id="i-export" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></symbol>
+  </defs>
+</svg>
+
+<div id="loading" class="loading-overlay">
+  <span class="loading-mark"><svg class="icon"><use href="#i-book"/></svg></span>
+  <div class="spinner"></div>
+  <span>Loading Site Khata…</span>
+</div>
+
+<div class="layout">
+
+  <!-- ── Sidebar ────────────────────────────────────────────────────── -->
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="brand-mark"><svg class="icon"><use href="#i-book"/></svg></span>
+      <span class="brand-name">Site Khata</span>
+    </div>
+
+    <nav class="side-nav">
+      <span class="side-nav-label">Modules</span>
+      <button class="tab-btn active" data-tab="dashboard"><svg class="icon"><use href="#i-grid"/></svg><span>Dashboard</span></button>
+      <button class="tab-btn" data-tab="material"><svg class="icon"><use href="#i-box"/></svg><span>Material</span></button>
+      <button class="tab-btn" data-tab="assets"><svg class="icon"><use href="#i-truck"/></svg><span>Assets</span></button>
+      <button class="tab-btn" data-tab="labour"><svg class="icon"><use href="#i-tool"/></svg><span>Labour</span></button>
+      <button class="tab-btn" data-tab="vendors"><svg class="icon"><use href="#i-users"/></svg><span>Vendors</span></button>
+      <button class="tab-btn" data-tab="expenses"><svg class="icon"><use href="#i-card"/></svg><span>Expenses</span></button>
+      <button class="tab-btn" data-tab="payments"><svg class="icon"><use href="#i-wallet"/></svg><span>Payments</span></button>
+      <button class="tab-btn" data-tab="receipts"><svg class="icon"><use href="#i-in-circle"/></svg><span>Receipts</span></button>
+    </nav>
+
+    <div class="side-foot">Material Management<br>&amp; Site Accounts</div>
+  </aside>
+
+  <!-- ── App shell ──────────────────────────────────────────────────── -->
+  <div class="app-shell">
+
+    <div id="app" hidden>
+      <header class="page-head">
+        <div class="page-title">
+          <h1 id="pageTitle">Dashboard</h1>
+          <p id="pageSubtitle">Poore kaam ka ek nazar mein summary</p>
+        </div>
+        <div class="client-controls">
+          <select id="clientSelect" class="client-select" aria-label="Select client">
+            <option value="">— Select client —</option>
+          </select>
+          <button id="btnAddClient" class="btn btn-primary"><svg class="icon"><use href="#i-plus"/></svg>Client</button>
+          <button id="btnAddSite" class="btn btn-secondary" disabled><svg class="icon"><use href="#i-plus"/></svg>Site</button>
+        </div>
+      </header>
+
+      <div id="sitesBar" class="sites-bar" hidden>
+        <svg class="icon sites-bar-icon"><use href="#i-pin"/></svg>
+        <span id="sitesChips" class="sites-chips"></span>
+      </div>
+
+      <main class="content">
+
+        <!-- ══ Dashboard ═════════════════════════════════════════════ -->
+        <section id="tab-dashboard" class="tab-panel active">
+          <div class="stats-row stats-row-5">
+            <div class="stat-card">
+              <span class="stat-icon si-indigo"><svg class="icon"><use href="#i-layers"/></svg></span>
+              <div class="stat-body"><span class="stat-label">Stock Items</span><span class="stat-value" id="statDashStock">0</span></div>
+            </div>
+            <div class="stat-card">
+              <span class="stat-icon si-rose"><svg class="icon"><use href="#i-users"/></svg></span>
+              <div class="stat-body"><span class="stat-label">Vendor Outstanding</span><span class="stat-value" id="statDashVendorDue">₹0</span></div>
+            </div>
+            <div class="stat-card">
+              <span class="stat-icon si-amber"><svg class="icon"><use href="#i-tool"/></svg></span>
+              <div class="stat-body"><span class="stat-label">Labour Paid</span><span class="stat-value" id="statDashLabourPaid">₹0</span></div>
+            </div>
+            <div class="stat-card">
+              <span class="stat-icon si-violet"><svg class="icon"><use href="#i-wallet"/></svg></span>
+              <div class="stat-body"><span class="stat-label">Paid This Month</span><span class="stat-value" id="statDashMonthOut">₹0</span></div>
+            </div>
+            <div class="stat-card">
+              <span class="stat-icon si-green"><svg class="icon"><use href="#i-in-circle"/></svg></span>
+              <div class="stat-body"><span class="stat-label">Received This Month</span><span class="stat-value" id="statDashMonthIn">₹0</span></div>
+            </div>
+          </div>
+
+          <div class="grid-2 grid-even">
+            <div class="card">
+              <div class="card-head"><h2>Godown Stock</h2></div>
+              <div class="table-wrap">
+                <table id="dashGodownTable">
+                  <thead><tr><th>Location</th><th>Material</th><th>Unit</th><th class="num">Available</th></tr></thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-head"><h2>Site Stock</h2></div>
+              <div class="table-wrap">
+                <table id="dashSiteTable">
+                  <thead><tr><th>Site</th><th>Material</th><th>Unit</th><th class="num">Available</th></tr></thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid-2 grid-even">
+            <div class="card">
+              <div class="card-head"><h2>Vendor Outstanding</h2></div>
+              <div class="table-wrap">
+                <table id="dashVendorTable">
+                  <thead><tr><th>Vendor</th><th class="num">Received</th><th class="num">Paid</th><th class="num">Balance</th></tr></thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-head"><h2>Monthly Summary <span class="hint" id="dashMonthLabel"></span></h2></div>
+              <div class="table-wrap">
+                <table id="dashMonthTable">
+                  <thead><tr><th>Category</th><th class="num">Amount</th></tr></thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-head"><h2>Recent Activity</h2></div>
+            <div class="table-wrap">
+              <table id="dashRecentTable">
+                <thead><tr><th>Date</th><th>Type</th><th>Detail</th><th class="num">Amount</th></tr></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ══ Material Tracking ═════════════════════════════════════ -->
+        <section id="tab-material" class="tab-panel">
+          <div class="stats-row">
+            <div class="stat-card">
+              <span class="stat-icon si-indigo"><svg class="icon"><use href="#i-trend"/></svg></span>
+              <div class="stat-body"><span class="stat-label">Purchase Value</span><span class="stat-value" id="statMatPurchase">₹0</span></div>
+            </div>
+            <div class="stat-card">
+              <span class="stat-icon si-green"><svg class="icon"><use href="#i-layers"/></svg></span>
+              <div class="stat-body"><span class="stat-label">Items in Stock</span><span class="stat-value" id="statMatStock">0</span></div>
+            </div>
+            <div class="stat-card">
+              <span class="stat-icon si-blue"><svg class="icon"><use href="#i-list"/></svg></span>
+              <div class="stat-body"><span class="stat-label">Total Entries</span><span class="stat-value" id="statMatEntries">0</span></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-head">
+              <h2>Materials Master <span class="count-pill" id="materialsMasterCount">0</span></h2>
+            </div>
+            <form id="formMaterialMaster" class="inline-form">
+              <div class="field"><label>Material Name</label><input type="text" name="name" placeholder="e.g. Iron, Cement, Sand" required></div>
+              <div class="field field-xs"><label>Unit</label><input type="text" name="unit" list="unitList" placeholder="bag"></div>
+              <div class="field field-xs"><label>Category</label><input type="text" name="category" placeholder="optional"></div>
+              <button type="submit" class="btn btn-primary"><svg class="icon"><use href="#i-plus"/></svg>Add</button>
+            </form>
+            <div id="materialsChips" class="master-chips"></div>
+          </div>
+
+          <div class="grid-2">
+            <div class="card">
+              <div class="card-head"><h2>Add Material Entry</h2></div>
+              <form id="formMaterial" class="entry-form" data-kind="material">
+                <div class="field">
+                  <label>Type</label>
+                  <select name="type" class="f-type" required>
+                    <option value="Purchase">Purchase</option>
+                    <option value="Sale">Sale</option>
+                    <option value="Transfer">Transfer (Godown → Site)</option>
+                    <option value="Consumed">Consumed</option>
+                  </select>
+                </div>
+                <div class="field"><label>Date</label><input type="date" name="date" required></div>
+                <div class="field"><label>Item</label><input type="text" name="item" list="materialList" placeholder="e.g. Cement" required></div>
+                <div class="field field-sm"><label>Qty</label><input type="number" step="any" name="qty" min="0.01" required></div>
+                <div class="field field-sm"><label>Unit</label><input type="text" name="unit" list="unitList" placeholder="bag" required></div>
+                <div class="field field-sm"><label>Rate (₹)</label><input type="number" step="any" name="rate" min="0" placeholder="0"></div>
+
+                <div class="field f-loc-single"><label>Location</label><select name="to_loc_single" class="f-location-select"></select></div>
+                <div class="field f-loc-from"><label>From (Godown)</label><select name="from_loc" class="f-location-select"></select></div>
+                <div class="field f-loc-to"><label>To (Site)</label><select name="to_loc" class="f-location-select"></select></div>
+                <div class="field f-vehicle" hidden><label>Vehicle / Remarks</label><input type="text" name="vehicle" placeholder="e.g. MP04 AB 1234"></div>
+
+                <div class="field f-vendor"><label>Vendor</label><select name="vendor_id"><option value="">— none —</option></select></div>
+                <div class="field field-check f-grn">
+                  <label><input type="checkbox" name="create_grn"> Auto-add to Vendor Ledger (Goods Received)</label>
+                </div>
+                <div class="field f-byname" hidden><label>By</label><input type="text" name="by_name" placeholder="Site Engineer"></div>
+
+                <div class="field field-wide"><label>Note</label><input type="text" name="note" placeholder="optional"></div>
+                <button type="submit" class="btn btn-primary field-wide"><svg class="icon"><use href="#i-plus"/></svg>Add Entry</button>
+              </form>
+            </div>
+
+            <div class="card">
+              <div class="card-head">
+                <h2>Stock Balance <span class="hint">location-wise · fully consumed = Nil</span></h2>
+              </div>
+              <div class="filter-bar">
+                <div class="field"><label>Location</label><select id="fltStockLoc" class="site-select" data-placeholder="— all locations —"></select></div>
+              </div>
+              <div class="table-wrap">
+                <table id="materialBalanceTable">
+                  <thead><tr><th>Location</th><th>Item</th><th>Unit</th><th class="num">Balance</th></tr></thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-head">
+              <h2>Material Entries <span class="count-pill" id="materialTableCount">0</span></h2>
+              <div class="card-tools">
+                <label class="table-search-wrap"><svg class="icon"><use href="#i-search"/></svg>
+                  <input type="text" class="table-search" data-filter="materialTable" placeholder="Search entries…"></label>
+                <button class="btn btn-secondary btn-sm" data-export="material"><svg class="icon"><use href="#i-export"/></svg>CSV</button>
+              </div>
+            </div>
+            <div class="filter-bar">
+              <div class="field"><label>From Date</label><input type="date" id="fltMatFrom" class="flt" data-scope="material"></div>
+              <div class="field"><label>To Date</label><input type="date" id="fltMatTo" class="flt" data-scope="material"></div>
+              <div class="field"><label>Type</label>
+                <select id="fltMatType" class="flt" data-scope="material">
+                  <option value="">— all types —</option>
+                  <option>Purchase</option><option>Sale</option><option>Transfer</option><option>Consumed</option>
+                </select>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table id="materialTable">
+                <thead>
+                  <tr><th>Date</th><th>Type</th><th>Item</th><th class="num">Qty</th><th>Unit</th><th class="num">Rate</th><th class="num">Amount</th><th>From</th><th>To</th><th>Vehicle</th><th>Vendor</th><th>Note</th><th></th></tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ══ Assets Tracking ═══════════════════════════════════════ -->
+        <section id="tab-assets" class="tab-panel">
+          <div class="stats-row">
+            <div class="stat-card">
+              <span class="stat-icon si-violet"><svg class="icon"><use href="#i-trend"/></svg></span>
+              <div class="stat-body"><span class="stat-label">Purchase Value</span><span class="stat-value" id="statAssetValue">₹0</span></div>
+            </div>
+            <div class="stat-card">
+              <span class="stat-icon si-green"><svg class="icon"><use href="#i-layers"/></svg></span>
+              <div class="stat-body"><span class="stat-label">Assets on Sites</span><span class="stat-value" id="statAssetItems">0</span></div>
+            </div>
+            <div class="stat-card">
+              <span class="stat-icon si-blue"><svg class="icon"><use href="#i-list"/></svg></span>
+              <div class="stat-body"><span class="stat-label">Total Entries</span><span class="stat-value" id="statAssetEntries">0</span></div>
+            </div>
+          </div>
+
+          <div class="grid-2">
+            <div class="card">
+              <div class="card-head"><h2>Add Asset Entry</h2></div>
+              <form id="formAsset" class="entry-form" data-kind="asset">
+                <div class="field">
+                  <label>Type</label>
+                  <select name="type" class="f-type" required>
+                    <option value="Purchase">Purchase</option>
+                    <option value="Sale">Sale</option>
+                    <option value="Transfer">Transfer</option>
+                    <option value="Consumed">Consumed</option>
+                  </select>
+                </div>
+                <div class="field"><label>Date</label><input type="date" name="date" required></div>
+                <div class="field"><label>Asset</label><input type="text" name="item" placeholder="e.g. JCB Machine" required></div>
+                <div class="field field-sm"><label>Qty</label><input type="number" step="any" name="qty" min="0.01" required></div>
+                <div class="field field-sm"><label>Unit</label><input type="text" name="unit" list="unitList" placeholder="nos" required></div>
+                <div class="field field-sm"><label>Rate (₹)</label><input type="number" step="any" name="rate" min="0" placeholder="0"></div>
+
+                <div class="field f-loc-single"><label>Location</label><select name="to_loc_single" class="f-location-select"></select></div>
+                <div class="field f-loc-from"><label>From</label><select name="from_loc" class="f-location-select"></select></div>
+                <div class="field f-loc-to"><label>To</label><select name="to_loc" class="f-location-select"></select></div>
+                <div class="field f-vehicle" hidden><label>Vehicle / Remarks</label><input type="text" name="vehicle" placeholder="optional"></div>
+
+                <div class="field f-vendor"><label>Vendor</label><select name="vendor_id"><option value="">— none —</option></select></div>
+                <div class="field field-check f-grn">
+                  <label><input type="checkbox" name="create_grn"> Auto-add to Vendor Ledger (Goods Received)</label>
+                </div>
+                <div class="field f-byname" hidden><label>By</label><input type="text" name="by_name" placeholder="Site Engineer"></div>
+
+                <div class="field field-wide"><label>Note</label><input type="text" name="note" placeholder="optional"></div>
+                <button type="submit" class="btn btn-primary field-wide"><svg class="icon"><use href="#i-plus"/></svg>Add Entry</button>
+              </form>
+            </div>
+
+            <div class="card">
+              <div class="card-head"><h2>Asset Register <span class="hint">location-wise</span></h2></div>
+              <div class="table-wrap">
+                <table id="assetBalanceTable">
+                  <thead><tr><th>Location</th><th>Asset</th><th>Unit</th><th class="num">Qty</th></tr></thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-head">
+              <h2>Asset Entries <span class="count-pill" id="assetTableCount">0</span></h2>
+              <label class="table-search-wrap"><svg class="icon"><use href="#i-search"/></svg>
+                <input type="text" class="table-search" data-filter="assetTable" placeholder="Search entries…"></label>
+            </div>
+            <div class="table-wrap">
+              <table id="assetTable">
+                <thead>
+                  <tr><th>Date</th><th>Type</th><th>Asset</th><th class="num">Qty</th><th>Unit</th><th class="num">Rate</th><th class="num">Amount</th><th>From</th><th>To</th><th>Vendor</th><th>Note</th><th></th></tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ══ Labour Management ═════════════════════════════════════ -->
+        <section id="tab-labour" class="tab-panel">
+          <div class="stats-row">
+            <div class="stat-card">
+              <span class="stat-icon si-green"><svg class="icon"><use href="#i-users"/></svg></span>
+              <div class="stat-body"><span class="stat-label">Active Labour</span><span class="stat-value" id="statLabActive">0</span></div>
+            </div>
+            <div class="stat-card">
+              <span class="stat-icon si-indigo"><svg class="icon"><use href="#i-wallet"/></svg></span>
+              <div class="stat-body"><span class="stat-label">Total Paid</span><span class="stat-value" id="statLabPaid">₹0</span></div>
+            </div>
+            <div class="stat-card">
+              <span class="stat-icon si-amber"><svg class="icon"><use href="#i-trend"/></svg></span>
+              <div class="stat-body"><span class="stat-label">Paid This Month</span><span class="stat-value" id="statLabMonth">₹0</span></div>
+            </div>
+          </div>
+
+          <div class="grid-2 grid-even">
+            <div class="card">
+              <div class="card-head"><h2>Add Labour</h2></div>
+              <form id="formLabour" class="entry-form">
+                <div class="field"><label>Name</label><input type="text" name="name" required></div>
+                <div class="field"><label>Mobile</label><input type="text" name="phone" placeholder="optional"></div>
+                <div class="field"><label>Labour Type</label>
+                  <select name="type" required>
+                    <option>General Labour</option><option>Contractor Labour</option>
+                    <option>Steel Binding Labour</option><option>Mason</option>
+                    <option>Carpenter</option><option>Painter</option>
+                    <option>Electrician</option><option>Plumber</option>
+                    <option>Tile Worker</option><option>Helper</option><option>Other</option>
+                  </select>
+                </div>
+                <div class="field"><label>Assigned Site</label><select name="site" class="site-select" data-placeholder="— select site —"></select></div>
+                <div class="field"><label>Contractor / Vendor</label><select name="contractor_id" class="contractor-select" data-placeholder="— none —"></select></div>
+                <div class="field"><label>Joining Date</label><input type="date" name="joining_date"></div>
+                <div class="field"><label>Aadhaar / ID <span class="hint">optional</span></label><input type="text" name="id_number"></div>
+                <div class="field"><label>Status</label>
+                  <select name="status"><option>Active</option><option>Inactive</option></select>
+                </div>
+                <div class="field field-wide"><label>Address</label><input type="text" name="address" placeholder="optional"></div>
+                <button type="submit" class="btn btn-primary field-wide"><svg class="icon"><use href="#i-plus"/></svg>Add Labour</button>
+              </form>
+            </div>
+
+            <div class="card">
+              <div class="card-head"><h2>Record Labour Payment</h2></div>
+              <form id="formLabourPay" class="entry-form">
+                <div class="field field-wide"><label>Labour</label><select name="labour_id" required></select></div>
+                <div class="field"><label>Amount (₹)</label><input type="number" step="any" name="amount" min="0.01" required></div>
+                <div class="field"><label>Date</label><input type="date" name="date" required></div>
+                <div class="field"><label>Mode</label>
+                  <select name="mode"><option>Cash</option><option>Online</option><option>Bank Transfer</option><option>UPI</option><option>Cheque</option></select>
+                </div>
+                <div class="field"><label>Site</label><select name="site" class="site-select" data-placeholder="— select site —"></select></div>
+                <div class="field"><label>Reference No.</label><input type="text" name="reference" placeholder="optional"></div>
+                <div class="field"><label>Remarks</label><input type="text" name="note" placeholder="optional"></div>
+                <button type="submit" class="btn btn-primary field-wide"><svg class="icon"><use href="#i-plus"/></svg>Record Payment</button>
+              </form>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-head">
+              <h2>Labour Register <span class="count-pill" id="labourTableCount">0</span></h2>
+              <div class="card-tools">
+                <label class="table-search-wrap"><svg class="icon"><use href="#i-search"/></svg>
+                  <input type="text" id="fltLabQ" class="flt" data-scope="labour" placeholder="Search labour…"></label>
+                <button class="btn btn-secondary btn-sm" data-export="labour"><svg class="icon"><use href="#i-export"/></svg>CSV</button>
+              </div>
+            </div>
+            <div class="filter-bar">
+              <div class="field"><label>Site</label><select id="fltLabSite" class="flt site-select" data-scope="labour" data-placeholder="— all sites —"></select></div>
+              <div class="field"><label>Type</label>
+                <select id="fltLabType" class="flt" data-scope="labour">
+                  <option value="">— all types —</option>
+                  <option>General Labour</option><option>Contractor Labour</option>
+                  <option>Steel Binding Labour</option><option>Mason</option>
+                  <option>Carpenter</option><option>Painter</option>
+                  <option>Electrician</option><option>Plumber</option>
+                  <option>Tile Worker</option><option>Helper</option><option>Other</option>
+                </select>
+              </div>
+              <div class="field"><label>Contractor</label><select id="fltLabContractor" class="flt contractor-select" data-scope="labour" data-placeholder="— all —"></select></div>
+              <div class="field"><label>Status</label>
+                <select id="fltLabStatus" class="flt" data-scope="labour">
+                  <option value="">— all —</option><option>Active</option><option>Inactive</option>
+                </select>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table id="labourTable">
+                <thead><tr><th>Name</th><th>Type</th><th>Mobile</th><th>Site</th><th>Contractor</th><th>Joining</th><th class="num">Total Paid</th><th>Status</th><th></th></tr></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-head">
+              <h2>Payment History <span class="count-pill" id="labourPayTableCount">0</span></h2>
+              <div class="card-tools">
+                <label class="table-search-wrap"><svg class="icon"><use href="#i-search"/></svg>
+                  <input type="text" id="fltLpQ" class="flt" data-scope="labourPay" placeholder="Search payments…"></label>
+                <button class="btn btn-secondary btn-sm" data-export="labourPay"><svg class="icon"><use href="#i-export"/></svg>CSV</button>
+              </div>
+            </div>
+            <div class="filter-bar">
+              <div class="field"><label>From Date</label><input type="date" id="fltLpFrom" class="flt" data-scope="labourPay"></div>
+              <div class="field"><label>To Date</label><input type="date" id="fltLpTo" class="flt" data-scope="labourPay"></div>
+              <div class="field"><label>Mode</label>
+                <select id="fltLpMode" class="flt" data-scope="labourPay">
+                  <option value="">— all modes —</option>
+                  <option>Cash</option><option>Online</option><option>Bank Transfer</option><option>UPI</option><option>Cheque</option>
+                </select>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table id="labourPayTable">
+                <thead><tr><th>Date</th><th>Labour</th><th>Site</th><th>Mode</th><th>Reference</th><th class="num">Amount</th><th>Remarks</th><th></th></tr></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ══ Vendor Payments ═══════════════════════════════════════ -->
+        <section id="tab-vendors" class="tab-panel">
+          <div class="stats-row">
+            <div class="stat-card">
+              <span class="stat-icon si-indigo"><svg class="icon"><use href="#i-inbox"/></svg></span>
+              <div class="stat-body"><span class="stat-label">Goods Received</span><span class="stat-value" id="statVenReceived">₹0</span></div>
+            </div>
+            <div class="stat-card">
+              <span class="stat-icon si-green"><svg class="icon"><use href="#i-check-circle"/></svg></span>
+              <div class="stat-body"><span class="stat-label">Total Paid</span><span class="stat-value" id="statVenPaid">₹0</span></div>
+            </div>
+            <div class="stat-card">
+              <span class="stat-icon si-rose"><svg class="icon"><use href="#i-wallet"/></svg></span>
+              <div class="stat-body"><span class="stat-label">Outstanding</span><span class="stat-value" id="statVenDue">₹0</span></div>
+            </div>
+          </div>
+
+          <div class="grid-2 grid-even">
+            <div class="card">
+              <div class="card-head"><h2>Add Vendor</h2></div>
+              <form id="formVendor" class="entry-form">
+                <div class="field"><label>Vendor Name</label><input type="text" name="name" required></div>
+                <div class="field"><label>Contact Person</label><input type="text" name="contact_person" placeholder="optional"></div>
+                <div class="field"><label>Mobile</label><input type="text" name="phone" placeholder="optional"></div>
+                <div class="field"><label>GST Number <span class="hint">optional</span></label><input type="text" name="gst"></div>
+                <div class="field"><label>Material Category</label><input type="text" name="category" placeholder="e.g. Steel, Cement"></div>
+                <div class="field"><label>Status</label>
+                  <select name="status"><option>Active</option><option>Inactive</option></select>
+                </div>
+                <div class="field field-wide"><label>Address</label><input type="text" name="address" placeholder="optional"></div>
+                <button type="submit" class="btn btn-primary field-wide"><svg class="icon"><use href="#i-plus"/></svg>Add Vendor</button>
+              </form>
+            </div>
+
+            <div class="card">
+              <div class="card-head"><h2>Add Transaction</h2></div>
+              <form id="formVendorTxn" class="entry-form">
+                <div class="field field-wide"><label>Vendor</label><select name="vendor_id" required></select></div>
+                <div class="field"><label>Type</label>
+                  <select name="type" required>
+                    <option value="Goods Received">Goods Received (Bill)</option>
+                    <option value="Payment">Payment</option>
+                  </select>
+                </div>
+                <div class="field"><label>Amount (₹)</label><input type="number" step="any" name="amount" min="0.01" required></div>
+                <div class="field"><label>Date</label><input type="date" name="date" required></div>
+                <div class="field"><label>Mode</label>
+                  <select name="mode"><option value="">—</option><option>Cash</option><option>Online</option><option>Bank Transfer</option><option>UPI</option><option>Cheque</option></select>
+                </div>
+                <div class="field"><label>Reference No.</label><input type="text" name="reference" placeholder="optional"></div>
+                <div class="field"><label>By</label><input type="text" name="by_name" placeholder="Account Officer"></div>
+                <div class="field field-wide"><label>Note</label><input type="text" name="note" placeholder="optional"></div>
+                <button type="submit" class="btn btn-primary field-wide"><svg class="icon"><use href="#i-plus"/></svg>Add Transaction</button>
+              </form>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-head"><h2>Vendor Summary</h2></div>
+            <div class="table-wrap">
+              <table id="vendorSummaryTable">
+                <thead><tr><th>Vendor</th><th>Category</th><th>Contact</th><th>Status</th><th class="num">Goods Received</th><th class="num">Paid</th><th class="num">Closing Balance</th></tr></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-head">
+              <h2>Vendor Ledger <span class="count-pill" id="vendorTxnTableCount">0</span></h2>
+              <div class="card-tools">
+                <label class="table-search-wrap"><svg class="icon"><use href="#i-search"/></svg>
+                  <input type="text" id="fltVenQ" class="flt" data-scope="vendorTxn" placeholder="Search ledger…"></label>
+                <button class="btn btn-secondary btn-sm" data-export="vendorTxn"><svg class="icon"><use href="#i-export"/></svg>CSV</button>
+              </div>
+            </div>
+            <div class="filter-bar">
+              <div class="field"><label>Vendor</label><select id="fltVenVendor" class="flt vendor-filter-select" data-scope="vendorTxn" data-placeholder="— all vendors —"></select></div>
+              <div class="field"><label>From Date</label><input type="date" id="fltVenFrom" class="flt" data-scope="vendorTxn"></div>
+              <div class="field"><label>To Date</label><input type="date" id="fltVenTo" class="flt" data-scope="vendorTxn"></div>
+            </div>
+            <div class="table-wrap">
+              <table id="vendorTxnTable">
+                <thead><tr><th>Date</th><th>Vendor</th><th>Type</th><th class="num">Amount</th><th>Mode</th><th>Reference</th><th>By</th><th>Note</th><th></th></tr></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ══ Site Expenses ═════════════════════════════════════════ -->
+        <section id="tab-expenses" class="tab-panel">
+          <div class="stats-row">
+            <div class="stat-card">
+              <span class="stat-icon si-rose"><svg class="icon"><use href="#i-wallet"/></svg></span>
+              <div class="stat-body"><span class="stat-label">Total Spend</span><span class="stat-value" id="statExpTotal">₹0</span></div>
+            </div>
+            <div class="stat-card">
+              <span class="stat-icon si-amber"><svg class="icon"><use href="#i-layers"/></svg></span>
+              <div class="stat-body"><span class="stat-label">Categories Used</span><span class="stat-value" id="statExpCats">0</span></div>
+            </div>
+            <div class="stat-card">
+              <span class="stat-icon si-blue"><svg class="icon"><use href="#i-list"/></svg></span>
+              <div class="stat-body"><span class="stat-label">Total Entries</span><span class="stat-value" id="statExpCount">0</span></div>
+            </div>
+          </div>
+
+          <div class="grid-2">
+            <div class="card">
+              <div class="card-head"><h2>Add Expense</h2></div>
+              <form id="formExpense" class="entry-form">
+                <div class="field"><label>Site</label><select name="site" class="site-select" data-placeholder="— select site —" required></select></div>
+                <div class="field"><label>Date</label><input type="date" name="date" required></div>
+                <div class="field"><label>Category</label>
+                  <select name="category" required>
+                    <option value="Civil">Civil</option>
+                    <option value="Petrol">Petrol</option>
+                    <option value="Diesel">Diesel</option>
+                    <option value="Machinery Rent">Machinery Rent</option>
+                    <option value="Staff Salary">Staff Salary</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+                <div class="field field-wide"><label>Item / Description</label><input type="text" name="item" required></div>
+                <div class="field field-sm"><label>Qty</label><input type="number" step="any" name="qty" min="0.01" required></div>
+                <div class="field field-sm"><label>Unit</label><input type="text" name="unit" list="unitList" placeholder="nos"></div>
+                <div class="field field-sm"><label>Rate (₹)</label><input type="number" step="any" name="rate" min="0" placeholder="0"></div>
+                <div class="field field-wide"><label>Note</label><input type="text" name="note" placeholder="optional"></div>
+                <button type="submit" class="btn btn-primary field-wide"><svg class="icon"><use href="#i-plus"/></svg>Add Expense</button>
+              </form>
+            </div>
+
+            <div class="card">
+              <div class="card-head"><h2>Category Summary</h2></div>
+              <div class="table-wrap">
+                <table id="expenseSummaryTable">
+                  <thead><tr><th>Category</th><th>Share</th><th class="num">Total (₹)</th></tr></thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-head">
+              <h2>Expense Entries <span class="count-pill" id="expenseTableCount">0</span></h2>
+              <label class="table-search-wrap"><svg class="icon"><use href="#i-search"/></svg>
+                <input type="text" class="table-search" data-filter="expenseTable" placeholder="Search expenses…"></label>
+            </div>
+            <div class="table-wrap">
+              <table id="expenseTable">
+                <thead><tr><th>Date</th><th>Site</th><th>Category</th><th>Item</th><th class="num">Qty</th><th>Unit</th><th class="num">Rate</th><th class="num">Amount</th><th>Note</th><th></th></tr></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ══ Payment Register (all outgoing) ═══════════════════════ -->
+        <section id="tab-payments" class="tab-panel">
+          <div class="stats-row">
+            <div class="stat-card">
+              <span class="stat-icon si-rose"><svg class="icon"><use href="#i-wallet"/></svg></span>
+              <div class="stat-body"><span class="stat-label">Total Outgoing</span><span class="stat-value" id="statPayTotal">₹0</span></div>
+            </div>
+            <div class="stat-card">
+              <span class="stat-icon si-amber"><svg class="icon"><use href="#i-trend"/></svg></span>
+              <div class="stat-body"><span class="stat-label">This Month</span><span class="stat-value" id="statPayMonth">₹0</span></div>
+            </div>
+            <div class="stat-card">
+              <span class="stat-icon si-blue"><svg class="icon"><use href="#i-list"/></svg></span>
+              <div class="stat-body"><span class="stat-label">Records</span><span class="stat-value" id="statPayCount">0</span></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-head">
+              <h2>Payment Register <span class="hint">labour + vendor + expenses + purchases</span></h2>
+              <div class="card-tools">
+                <label class="table-search-wrap"><svg class="icon"><use href="#i-search"/></svg>
+                  <input type="text" id="fltPayQ" class="flt" data-scope="payments" placeholder="Search payments…"></label>
+                <button class="btn btn-secondary btn-sm" data-export="payments"><svg class="icon"><use href="#i-export"/></svg>CSV</button>
+              </div>
+            </div>
+            <div class="filter-bar">
+              <div class="field"><label>Category</label>
+                <select id="fltPayCat" class="flt" data-scope="payments">
+                  <option value="">— all categories —</option>
+                  <option>Labour Payment</option>
+                  <option>Vendor Payment</option>
+                  <option>Site Expense</option>
+                  <option>Material Purchase</option>
+                  <option>Asset Purchase</option>
+                </select>
+              </div>
+              <div class="field"><label>Site</label><select id="fltPaySite" class="flt site-select" data-scope="payments" data-placeholder="— all sites —"></select></div>
+              <div class="field"><label>From Date</label><input type="date" id="fltPayFrom" class="flt" data-scope="payments"></div>
+              <div class="field"><label>To Date</label><input type="date" id="fltPayTo" class="flt" data-scope="payments"></div>
+            </div>
+            <div class="table-wrap">
+              <table id="paymentRegTable">
+                <thead><tr><th>Date</th><th>Party</th><th>Category</th><th>Site</th><th class="num">Amount</th><th>Mode</th><th>Reference</th><th>Remarks</th></tr></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ══ Receipt Register (incoming) ═══════════════════════════ -->
+        <section id="tab-receipts" class="tab-panel">
+          <div class="stats-row">
+            <div class="stat-card">
+              <span class="stat-icon si-green"><svg class="icon"><use href="#i-in-circle"/></svg></span>
+              <div class="stat-body"><span class="stat-label">Total Received</span><span class="stat-value" id="statRecTotal">₹0</span></div>
+            </div>
+            <div class="stat-card">
+              <span class="stat-icon si-amber"><svg class="icon"><use href="#i-trend"/></svg></span>
+              <div class="stat-body"><span class="stat-label">This Month</span><span class="stat-value" id="statRecMonth">₹0</span></div>
+            </div>
+            <div class="stat-card">
+              <span class="stat-icon si-blue"><svg class="icon"><use href="#i-list"/></svg></span>
+              <div class="stat-body"><span class="stat-label">Receipts</span><span class="stat-value" id="statRecCount">0</span></div>
+            </div>
+          </div>
+
+          <div class="grid-2">
+            <div class="card">
+              <div class="card-head"><h2>Add Receipt</h2></div>
+              <form id="formReceipt" class="entry-form">
+                <div class="field"><label>Receipt Date</label><input type="date" name="date" required></div>
+                <div class="field"><label>Received From</label><input type="text" name="from_name" required></div>
+                <div class="field"><label>Amount (₹)</label><input type="number" step="any" name="amount" min="0.01" required></div>
+                <div class="field"><label>Mode</label>
+                  <select name="mode"><option>Cash</option><option>Online</option><option>Bank Transfer</option><option>UPI</option><option>Cheque</option></select>
+                </div>
+                <div class="field"><label>Project / Site</label><select name="site" class="site-select" data-placeholder="— select site —"></select></div>
+                <div class="field"><label>Reference No.</label><input type="text" name="reference" placeholder="optional"></div>
+                <div class="field field-wide"><label>Remarks</label><input type="text" name="note" placeholder="optional"></div>
+                <button type="submit" class="btn btn-primary field-wide"><svg class="icon"><use href="#i-plus"/></svg>Add Receipt</button>
+              </form>
+            </div>
+
+            <div class="card">
+              <div class="card-head"><h2>By Payment Mode</h2></div>
+              <div class="table-wrap">
+                <table id="receiptModeTable">
+                  <thead><tr><th>Mode</th><th>Share</th><th class="num">Total (₹)</th></tr></thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-head">
+              <h2>Receipt Register <span class="count-pill" id="receiptTableCount">0</span></h2>
+              <div class="card-tools">
+                <label class="table-search-wrap"><svg class="icon"><use href="#i-search"/></svg>
+                  <input type="text" id="fltRecQ" class="flt" data-scope="receipts" placeholder="Search receipts…"></label>
+                <button class="btn btn-secondary btn-sm" data-export="receipts"><svg class="icon"><use href="#i-export"/></svg>CSV</button>
+              </div>
+            </div>
+            <div class="filter-bar">
+              <div class="field"><label>From Date</label><input type="date" id="fltRecFrom" class="flt" data-scope="receipts"></div>
+              <div class="field"><label>To Date</label><input type="date" id="fltRecTo" class="flt" data-scope="receipts"></div>
+              <div class="field"><label>Mode</label>
+                <select id="fltRecMode" class="flt" data-scope="receipts">
+                  <option value="">— all modes —</option>
+                  <option>Cash</option><option>Online</option><option>Bank Transfer</option><option>UPI</option><option>Cheque</option>
+                </select>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table id="receiptTable">
+                <thead><tr><th>Date</th><th>Received From</th><th>Site</th><th class="num">Amount</th><th>Mode</th><th>Reference</th><th>Remarks</th><th></th></tr></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+      </main>
+    </div>
+
+    <div id="emptyState" class="empty-state" hidden>
+      <svg class="icon"><use href="#i-inbox"/></svg>
+      <h2>Shuru karte hain!</h2>
+      <p>Koi client nahi mila. Pehla client add karo aur entries shuru karo.</p>
+      <button id="btnEmptyAddClient" class="btn btn-primary"><svg class="icon"><use href="#i-plus"/></svg>Add Client</button>
+    </div>
+
+  </div>
+</div>
+
+<!-- ── Modals ─────────────────────────────────────────────────────── -->
+<div id="modalClient" class="modal-overlay" hidden>
+  <div class="modal">
+    <h2>Add Client</h2>
+    <form id="formClient">
+      <div class="field field-wide"><label>Client Name</label><input type="text" name="name" required></div>
+      <div class="field field-wide"><label>Sites (comma separated)</label><input type="text" name="sites" placeholder="e.g. Godown, Site A, Site B"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" data-close-modal>Cancel</button>
+        <button type="submit" class="btn btn-primary">Save</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div id="modalSite" class="modal-overlay" hidden>
+  <div class="modal">
+    <h2>Add Site</h2>
+    <form id="formSite">
+      <div class="field field-wide"><label>Site Name</label><input type="text" name="name" required></div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" data-close-modal>Cancel</button>
+        <button type="submit" class="btn btn-primary">Save</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<datalist id="unitList">
+  <option value="bag"></option>
+  <option value="kg"></option>
+  <option value="ton"></option>
+  <option value="nos"></option>
+  <option value="liter"></option>
+  <option value="cft"></option>
+  <option value="cum"></option>
+  <option value="hour"></option>
+  <option value="day"></option>
+</datalist>
+
+<datalist id="materialList"></datalist>
+
+<div id="toast" class="toast" hidden></div>
+
+<script src="app.js"></script>
+</body>
+</html>

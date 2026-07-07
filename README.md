@@ -2,11 +2,15 @@
 
 Python (Flask) backend + SQLite database + HTML/CSS/JavaScript frontend.
 
-Aapke handwritten note ke 4 modules:
-1. **Material Tracking** — Purchase, Sale, Godown→Site / Site→Site Transfer, Consumed, Balance
-2. **Assets Tracking** — Purchase, Sale, Transfer, Consumed, location-wise register
-3. **Vendor Payments** — Goods Received (Site Engineer), Payment (Account Officer), Closing Balance
-4. **Site Expenses** — Civil / Petrol / Diesel / Machinery Rent / Staff Salary / Other (Qty × Unit × Rate)
+Modules:
+1. **Dashboard** — godown/site stock, vendor outstanding, monthly summary, recent activity
+2. **Material Tracking** — materials master, Purchase, Sale, Godown→Site Transfer (vehicle ke saath), Consumed, live stock (fully consumed = Nil), date/type filters
+3. **Assets Tracking** — Purchase, Sale, Transfer, Consumed, location-wise register
+4. **Labour Management** — labour register (type, site, contractor, Aadhaar, status), site/type/contractor/status filters, labour payments (Cash/Online/Bank Transfer/UPI/Cheque)
+5. **Vendor Payments** — vendor master (contact person, GST, category, status), Goods Received (bills), Payments (mode + reference), Closing Balance, ledger filters
+6. **Site Expenses** — Civil / Petrol / Diesel / Machinery Rent / Staff Salary / Other (Qty × Unit × Rate)
+7. **Payment Register** — saare outgoing payments ek jagah (labour + vendor + expenses + purchases), filters + CSV export
+8. **Receipt Register** — saare incoming payments, mode-wise summary, CSV export
 
 ---
 
@@ -35,10 +39,10 @@ Bas! Pehla client add karo aur entries shuru karo.
 
 ## Data kahan save hota hai?
 
-Sab data isi folder mein **`khata.db`** file mein save hota hai (SQLite database).
+Sab data **`database/khata.db`** file mein save hota hai (SQLite database).
 
-- **Backup:** bas `khata.db` file ko copy karke pen drive / Google Drive mein rakh lo.
-- **Restore:** wahi file wapas folder mein paste kar do.
+- **Backup:** bas `database/khata.db` file ko copy karke pen drive / Google Drive mein rakh lo.
+- **Restore:** wahi file wapas `database/` folder mein paste kar do.
 - App band karne ya computer restart karne se data nahi jata.
 
 ## Office ke doosre computers se kaise use karein?
@@ -52,14 +56,20 @@ IP address jaanne ke liye: Windows par `ipconfig`, Mac/Linux par `ifconfig` chal
 
 ## Files ka structure
 
-    site-khata/
-    ├── app.py              → Backend (Python/Flask) + database logic
-    ├── requirements.txt    → Python dependencies (sirf Flask)
-    ├── khata.db            → Database (pehli baar chalane par ban jayega)
-    └── static/
-        ├── index.html      → Frontend page
-        ├── style.css       → Design
-        └── app.js          → Frontend logic (API calls, rendering)
+    khata/
+    ├── app.py                   → Entry point (`python app.py` se yahi chalta hai)
+    ├── requirements.txt         → Python dependencies (sirf Flask)
+    ├── backend/                 → Backend (Flask app + API routes)
+    │   ├── __init__.py            → App factory (create_app), frontend serving, /health
+    │   └── routes.py               → Saare /api/* routes (clients, sites, entries, vendors, expenses)
+    ├── database/                → Database layer
+    │   ├── connection.py          → SQLite/PostgreSQL connection, query helpers
+    │   ├── schema.py               → Table definitions + init_db()
+    │   └── khata.db                → SQLite data file (local runs; pehli baar chalane par ban jayega)
+    └── frontend/                 → Frontend (static, served by Flask)
+        ├── index.html              → Page structure (4 modules + client/site management)
+        ├── style.css               → Design
+        └── app.js                  → Frontend logic (API calls, rendering, forms)
 
 ## Aage kya add ho sakta hai
 
