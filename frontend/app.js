@@ -1,8 +1,10 @@
 "use strict";
 
 const state = {
+  auth: false,
   clients: [],
   client_id: "",
+  all_sites: [],
   sites: [],
   entries: [],
   vendors: [],
@@ -30,27 +32,33 @@ async function errorFrom(res) {
   }
 }
 
-async function apiGet(url) {
-  const res = await fetch(url);
-  if (!res.ok) throw await errorFrom(res);
-  return res.json();
+function showLogin() {
+  document.getElementById("loading").hidden = true;
+  document.getElementById("app").hidden = true;
+  document.getElementById("emptyState").hidden = true;
+  const scr = document.getElementById("loginScreen");
+  if (scr.hidden) {
+    scr.hidden = false;
+    scr.querySelector("input").focus();
+  }
 }
 
-async function apiPost(url, payload) {
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-  if (!res.ok) throw await errorFrom(res);
-  return res.json();
+async function apiFetch(url, options) {
+  const res = await fetch(url, options);
+  if (res.ok) return res.json();
+  const err = await errorFrom(res);
+  if (res.status === 401) {
+    err.authRequired = true;
+    if (!url.includes("/login")) showLogin();
+  }
+  throw err;
 }
 
-async function apiDelete(url) {
-  const res = await fetch(url, { method: "DELETE" });
-  if (!res.ok) throw await errorFrom(res);
-  return res.json();
-}
+const JSON_HEADERS = { "Content-Type": "application/json" };
+const apiGet    = (url) => apiFetch(url);
+const apiPost   = (url, payload) => apiFetch(url, { method: "POST", headers: JSON_HEADERS, body: JSON.stringify(payload) });
+const apiPut    = (url, payload) => apiFetch(url, { method: "PUT", headers: JSON_HEADERS, body: JSON.stringify(payload) });
+const apiDelete = (url) => apiFetch(url, { method: "DELETE" });
 
 // ── Small utilities ──────────────────────────────────────────────────────
 function escapeHtml(s) {
@@ -87,10 +95,15 @@ function monthLabel() {
 const TRASH_BTN = (attr, id) =>
   `<button class="btn-icon-danger" title="Delete" aria-label="Delete" ${attr}="${id}"><svg class="icon"><use href="#i-trash"/></svg></button>`;
 
+const EDIT_BTN = (attr, id) =>
+  `<button class="btn-icon-edit" title="Edit" aria-label="Edit" ${attr}="${id}"><svg class="icon"><use href="#i-edit"/></svg></button>`;
+
 const REDUCED_MOTION = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 const TAB_META = {
   dashboard: ["Dashboard", "Poore kaam ka ek nazar mein summary"],
+  clients:   ["Client Management", "Clients add/edit karo aur unki sites ka hisaab rakho"],
+  sites:     ["Site Management", "Har client ki sites ka master record"],
   material:  ["Material Tracking", "Purchase, transfer, consumption aur live stock"],
   assets:    ["Assets Tracking", "Machinery aur equipment ka location-wise register"],
   labour:    ["Labour Management", "Labour register, site-wise filter aur payments"],
@@ -178,12 +191,17 @@ function toast(message, type = "success") {
   toastTimer = setTimeout(() => { el.hidden = true; }, 3000);
 }
 
+let modalOpener = null;
 function openModal(id) {
   const overlay = document.getElementById(id);
+  modalOpener = document.activeElement; // remember trigger to restore focus on close
   overlay.hidden = false;
   overlay.querySelector("input, select")?.focus();
 }
-function closeModal(id) { document.getElementById(id).hidden = true; }
+function closeModal(id) {
+  document.getElementById(id).hidden = true;
+  if (modalOpener?.focus) { modalOpener.focus(); modalOpener = null; }
+}
 
 function setFormBusy(form, busy) {
   form.querySelectorAll('button[type="submit"]').forEach((b) => {
@@ -196,6 +214,88 @@ function setDefaultDates() {
   const today = new Date().toISOString().slice(0, 10);
   document.querySelectorAll('form input[type="date"]').forEach((d) => { if (!d.value) d.value = today; });
 }
+
+// ── Edit mode (record ko uske add-form mein load karke update) ───────────
+const EDITING = {}; // formId -> record id being edited
+
+function setSubmitLabel(form, label) {
+  const btn = form.querySelector('button[type="submit"]');
+  const textNode = [...btn.childNodes].filter((n) => n.nodeType === Node.TEXT_NODE).pop();
+  if (!textNode) return;
+  if (!btn.dataset.label) btn.dataset.label = textNode.textContent;
+  textNode.textContent = label || btn.dataset.label;
+}
+
+function exitEditMode(form) {
+  if (!EDITING[form.id]) return;
+  delete EDITING[form.id];
+  form.classList.remove("is-editing");
+  form.reset();
+  setDefaultDates();
+  setSubmitLabel(form, null);
+  if (form.dataset.kind) updateEntryFormVisibility(form);
+}
+
+function enterEditMode(form, id) {
+  EDITING[form.id] = id;
+  form.classList.add("is-editing");
+  setSubmitLabel(form, "Update");
+  if (!form.querySelector(".btn-cancel-edit")) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "btn btn-secondary btn-cancel-edit";
+    b.textContent = "Cancel";
+    b.addEventListener("click", () => exitEditMode(form));
+    form.querySelector('button[type="submit"]').after(b);
+  }
+  form.scrollIntoView({ behavior: REDUCED_MOTION ? "auto" : "smooth", block: "nearest" });
+  form.querySelector("input:not([type=checkbox]), select")?.focus();
+}
+
+// Record ki keys jis form field se match karti hain wahan value bhar do
+function fillForm(form, record) {
+  for (const [name, value] of Object.entries(record)) {
+    const el = form.elements[name];
+    if (el && !(el instanceof RadioNodeList) && el.type !== "checkbox") el.value = value ?? "";
+  }
+}
+
+function startSimpleEdit(formId, list, id) {
+  const record = list.find((x) => x.id === id);
+  if (!record) return;
+  const form = document.getElementById(formId);
+  form.reset();
+  fillForm(form, record);
+  enterEditMode(form, id);
+}
+
+function startEntryEdit(id) {
+  const entry = state.entries.find((x) => x.id === id);
+  if (!entry) return;
+  const form = document.getElementById(entry.kind === "material" ? "formMaterial" : "formAsset");
+  form.reset();
+  form.querySelector(".f-type").value = entry.type;
+  fillForm(form, entry);
+  if (entry.type !== "Transfer") {
+    form.elements.to_loc_single.value =
+      (entry.type === "Purchase" ? entry.to_loc : entry.from_loc) || "";
+  }
+  form.querySelector('[name="create_grn"]').checked = false;
+  updateEntryFormVisibility(form);
+  enterEditMode(form, entry.id);
+}
+
+const EDIT_HANDLERS = {
+  editEntry:         startEntryEdit,
+  editClient:        (id) => startSimpleEdit("formClientMgmt", state.clients, id),
+  editSite:          (id) => startSimpleEdit("formSiteMgmt", state.all_sites, id),
+  editVendor:        (id) => startSimpleEdit("formVendor", state.vendors, id),
+  editVendorTxn:     (id) => startSimpleEdit("formVendorTxn", state.vendor_txns, id),
+  editExpense:       (id) => startSimpleEdit("formExpense", state.expenses, id),
+  editLabourer:      (id) => startSimpleEdit("formLabour", state.labourers, id),
+  editLabourPayment: (id) => startSimpleEdit("formLabourPay", state.labour_payments, id),
+  editReceipt:       (id) => startSimpleEdit("formReceipt", state.receipts, id),
+};
 
 // ── Lookups ──────────────────────────────────────────────────────────────
 function vendorName(id) {
@@ -210,6 +310,8 @@ async function loadBootstrap(clientId) {
   const qs = clientId ? `?client_id=${encodeURIComponent(clientId)}` : "";
   const data = await apiGet(`/api/bootstrap${qs}`);
   Object.assign(state, data);
+  // Server stale ids ko discard karta hai — saved id ko sync rakho
+  localStorage.setItem("khata_client_id", state.client_id || "");
   renderAll();
 }
 
@@ -219,7 +321,7 @@ function renderShell() {
   document.getElementById("emptyState").hidden = hasClients;
   document.getElementById("app").hidden = !hasClients;
   document.getElementById("sitesBar").hidden = !hasClients;
-  document.getElementById("btnAddSite").disabled = !state.client_id;
+  document.getElementById("btnLogout").hidden = !state.auth;
 
   const sel = document.getElementById("clientSelect");
   sel.innerHTML = '<option value="">— Select client —</option>' +
@@ -229,7 +331,7 @@ function renderShell() {
   const chips = document.getElementById("sitesChips");
   chips.innerHTML = state.sites.length
     ? state.sites.map((s) => `<span class="chip">${escapeHtml(s.name)}</span>`).join("")
-    : '<span class="chip">Koi site nahi — "+ Site" se add karo</span>';
+    : '<span class="chip">Koi site nahi — Sites tab se add karo</span>';
 }
 
 // ── Rendering: dropdowns fed by state ────────────────────────────────────
@@ -253,6 +355,9 @@ function populateSelects() {
 
   document.querySelectorAll(".contractor-select").forEach((sel) =>
     fillSelect(sel, state.vendors, (v) => v.id, (v) => v.name));
+
+  document.querySelectorAll(".client-picker").forEach((sel) =>
+    fillSelect(sel, state.clients, (c) => c.id, (c) => c.name));
 
   document.querySelectorAll(".vendor-filter-select").forEach((sel) =>
     fillSelect(sel, state.vendors, (v) => v.id, (v) => v.name));
@@ -282,6 +387,60 @@ function populateSelects() {
 
   document.getElementById("materialList").innerHTML =
     state.materials.map((m) => `<option value="${escapeHtml(m.name)}"></option>`).join("");
+}
+
+// ── Clients ──────────────────────────────────────────────────────────────
+function renderClientsTable() {
+  const tbody = document.querySelector("#clientTable tbody");
+  const status = val("fltClientStatus"), q = val("fltClientQ").trim().toLowerCase();
+  const list = state.clients.filter((c) =>
+    (!status || (c.status || "Active") === status) &&
+    (!q || `${c.name} ${c.contact_person || ""} ${c.phone || ""} ${c.email || ""}`.toLowerCase().includes(q)));
+  setCountPill("clientTableCount", list.length);
+  setStat("statClientTotal", state.clients.length);
+  setStat("statClientActive", state.clients.filter((c) => (c.status || "Active") === "Active").length);
+  setStat("statClientSites", state.all_sites.length);
+  if (!list.length) {
+    tbody.innerHTML = emptyRow(7, "Koi client nahi mila");
+    return;
+  }
+  tbody.innerHTML = list.map((c) => {
+    const siteCount = state.all_sites.filter((s) => s.client_id === c.id).length;
+    return `<tr>
+      <td>${avatarHtml(c.name)}${escapeHtml(c.name)}</td>
+      <td>${escapeHtml(c.contact_person || "")}</td>
+      <td>${escapeHtml(c.phone || "")}</td>
+      <td>${escapeHtml(c.email || "")}</td>
+      <td class="num">${siteCount}</td>
+      <td><span class="badge badge-${c.status || "Active"}">${escapeHtml(c.status || "Active")}</span></td>
+      <td class="row-actions">${EDIT_BTN("data-edit-client", c.id)}${TRASH_BTN("data-del-client", c.id)}</td>
+    </tr>`;
+  }).join("");
+}
+
+// ── Sites ────────────────────────────────────────────────────────────────
+function renderSitesTable() {
+  const tbody = document.querySelector("#siteTable tbody");
+  const clientId = val("fltSiteClient"), status = val("fltSiteStatus"), q = val("fltSiteQ").trim().toLowerCase();
+  const list = state.all_sites.filter((s) =>
+    (!clientId || s.client_id === clientId) &&
+    (!status || (s.status || "Active") === status) &&
+    (!q || `${s.name} ${s.client_name || ""} ${s.address || ""}`.toLowerCase().includes(q)));
+  setCountPill("siteTableCount", list.length);
+  setStat("statSiteTotal", state.all_sites.length);
+  setStat("statSiteActive", state.all_sites.filter((s) => (s.status || "Active") === "Active").length);
+  setStat("statSiteInactive", state.all_sites.filter((s) => s.status === "Inactive").length);
+  if (!list.length) {
+    tbody.innerHTML = emptyRow(5, "Koi site nahi mili");
+    return;
+  }
+  tbody.innerHTML = list.map((s) => `<tr>
+      <td>${escapeHtml(s.client_name || "")}</td>
+      <td>${escapeHtml(s.name)}</td>
+      <td>${escapeHtml(s.address || "")}</td>
+      <td><span class="badge badge-${s.status || "Active"}">${escapeHtml(s.status || "Active")}</span></td>
+      <td class="row-actions">${EDIT_BTN("data-edit-site", s.id)}${TRASH_BTN("data-del-site", s.id)}</td>
+    </tr>`).join("");
 }
 
 // ── Materials master ─────────────────────────────────────────────────────
@@ -373,7 +532,7 @@ function renderMaterialEntries() {
       <td>${escapeHtml(e.vehicle || "")}</td>
       <td>${escapeHtml(vendorName(e.vendor_id))}</td>
       <td>${escapeHtml(e.note || "")}</td>
-      <td>${TRASH_BTN("data-del-entry", e.id)}</td>
+      <td class="row-actions">${EDIT_BTN("data-edit-entry", e.id)}${TRASH_BTN("data-del-entry", e.id)}</td>
     </tr>`).join("");
 }
 
@@ -397,7 +556,7 @@ function renderAssetEntries() {
       <td>${escapeHtml(e.to_loc || "")}</td>
       <td>${escapeHtml(vendorName(e.vendor_id))}</td>
       <td>${escapeHtml(e.note || "")}</td>
-      <td>${TRASH_BTN("data-del-entry", e.id)}</td>
+      <td class="row-actions">${EDIT_BTN("data-edit-entry", e.id)}${TRASH_BTN("data-del-entry", e.id)}</td>
     </tr>`).join("");
 }
 
@@ -435,7 +594,7 @@ function renderLabourRegister() {
       <td class="num">${fmtMoney(labourPaidTotal(l.id))}</td>
       <td><span class="badge badge-${l.status}">${escapeHtml(l.status)}</span>
           <button class="btn-link" data-toggle-labourer="${l.id}" data-next="${next}">${next === "Active" ? "Activate" : "Deactivate"}</button></td>
-      <td>${TRASH_BTN("data-del-labourer", l.id)}</td>
+      <td class="row-actions">${EDIT_BTN("data-edit-labourer", l.id)}${TRASH_BTN("data-del-labourer", l.id)}</td>
     </tr>`;
   }).join("");
 }
@@ -462,7 +621,7 @@ function renderLabourPayments() {
       <td>${escapeHtml(p.reference || "")}</td>
       <td class="num">${fmtMoney(p.amount)}</td>
       <td>${escapeHtml(p.note || "")}</td>
-      <td>${TRASH_BTN("data-del-labour-payment", p.id)}</td>
+      <td class="row-actions">${EDIT_BTN("data-edit-labour-payment", p.id)}${TRASH_BTN("data-del-labour-payment", p.id)}</td>
     </tr>`).join("");
 }
 
@@ -470,7 +629,7 @@ function renderLabourPayments() {
 function renderVendorSummaryTable() {
   const tbody = document.querySelector("#vendorSummaryTable tbody");
   if (!state.vendors.length) {
-    tbody.innerHTML = emptyRow(7, "Koi vendor nahi hai");
+    tbody.innerHTML = emptyRow(8, "Koi vendor nahi hai");
     return;
   }
   tbody.innerHTML = state.vendors.map((v) => {
@@ -487,6 +646,7 @@ function renderVendorSummaryTable() {
       <td class="num">${fmtMoney(received)}</td>
       <td class="num">${fmtMoney(paid)}</td>
       <td class="num"><strong class="${balClass}">${fmtMoney(balance)}</strong></td>
+      <td class="row-actions">${EDIT_BTN("data-edit-vendor", v.id)}${TRASH_BTN("data-del-vendor", v.id)}</td>
     </tr>`;
   }).join("");
 }
@@ -516,7 +676,7 @@ function renderVendorTxnTable() {
       <td>${escapeHtml(t.reference || "")}</td>
       <td>${escapeHtml(t.by_name || "")}</td>
       <td>${escapeHtml(t.note || "")}</td>
-      <td>${TRASH_BTN("data-del-vendor-txn", t.id)}</td>
+      <td class="row-actions">${EDIT_BTN("data-edit-vendor-txn", t.id)}${TRASH_BTN("data-del-vendor-txn", t.id)}</td>
     </tr>`;
   }).join("");
 }
@@ -539,7 +699,7 @@ function renderExpenseTable() {
       <td class="num">${fmtMoney(x.rate)}</td>
       <td class="num">${fmtMoney(x.qty * x.rate)}</td>
       <td>${escapeHtml(x.note || "")}</td>
-      <td>${TRASH_BTN("data-del-expense", x.id)}</td>
+      <td class="row-actions">${EDIT_BTN("data-edit-expense", x.id)}${TRASH_BTN("data-del-expense", x.id)}</td>
     </tr>`).join("");
 }
 
@@ -646,7 +806,7 @@ function renderReceiptsTable() {
       <td>${escapeHtml(r.mode)}</td>
       <td>${escapeHtml(r.reference || "")}</td>
       <td>${escapeHtml(r.note || "")}</td>
-      <td>${TRASH_BTN("data-del-receipt", r.id)}</td>
+      <td class="row-actions">${EDIT_BTN("data-edit-receipt", r.id)}${TRASH_BTN("data-del-receipt", r.id)}</td>
     </tr>`).join("");
 }
 
@@ -837,6 +997,8 @@ async function handleEntrySubmit(e) {
     note: fd.get("note") || "",
   };
 
+  const editId = EDITING[form.id];
+
   if (type === "Transfer") {
     payload.from_loc = fd.get("from_loc");
     payload.to_loc = fd.get("to_loc");
@@ -844,7 +1006,7 @@ async function handleEntrySubmit(e) {
   } else if (type === "Purchase") {
     payload.to_loc = fd.get("to_loc_single");
     payload.vendor_id = fd.get("vendor_id") || "";
-    if (fd.get("create_grn")) {
+    if (fd.get("create_grn") && !editId) {
       payload.create_grn = true;
       payload.by_name = fd.get("by_name") || "Site Engineer";
     }
@@ -854,12 +1016,17 @@ async function handleEntrySubmit(e) {
 
   setFormBusy(form, true);
   try {
-    await apiPost("/api/entries", payload);
-    form.reset();
-    setDefaultDates();
-    updateEntryFormVisibility(form);
+    if (editId) {
+      await apiPut(`/api/entries/${editId}`, payload);
+      exitEditMode(form);
+    } else {
+      await apiPost("/api/entries", payload);
+      form.reset();
+      setDefaultDates();
+      updateEntryFormVisibility(form);
+    }
     await loadBootstrap(state.client_id);
-    toast("Entry added");
+    toast(editId ? "Entry updated" : "Entry added");
   } catch (err) {
     toast(err.message, "error");
   } finally {
@@ -870,6 +1037,9 @@ async function handleEntrySubmit(e) {
 // ── Delete / toggle (event delegation) ───────────────────────────────────
 const DELETE_ROUTES = [
   ["delEntry", "entries"],
+  ["delClient", "clients"],
+  ["delSite", "sites"],
+  ["delVendor", "vendors"],
   ["delVendorTxn", "vendor_txns"],
   ["delExpense", "expenses"],
   ["delMaterial", "materials"],
@@ -877,6 +1047,13 @@ const DELETE_ROUTES = [
   ["delLabourPayment", "labour_payments"],
   ["delReceipt", "receipts"],
 ];
+
+const DELETE_CONFIRMS = {
+  delClient: "Client ko permanently delete karna hai? Ye undo nahi ho sakta.",
+  delSite: "Site ko permanently delete karna hai? Ye undo nahi ho sakta.",
+  delVendor: "Vendor delete karne se uska poora ledger bhi delete hoga. Pakka?",
+  delLabourer: "Labour delete karne se uski payment history bhi delete hogi. Pakka?",
+};
 
 async function handleDeleteClick(e) {
   const toggleBtn = e.target.closest("[data-toggle-labourer]");
@@ -892,14 +1069,14 @@ async function handleDeleteClick(e) {
   }
 
   const btn = e.target.closest(
-    "[data-del-entry],[data-del-vendor-txn],[data-del-expense],[data-del-material],[data-del-labourer],[data-del-labour-payment],[data-del-receipt]");
+    "[data-del-entry],[data-del-client],[data-del-site],[data-del-vendor],[data-del-vendor-txn],[data-del-expense],[data-del-material],[data-del-labourer],[data-del-labour-payment],[data-del-receipt]");
   if (!btn) return;
 
   const found = DELETE_ROUTES.find(([key]) => btn.dataset[key]);
   if (!found) return;
   const [key, endpoint] = found;
 
-  if (!confirm("Delete this record?")) return;
+  if (!confirm(DELETE_CONFIRMS[key] || "Delete this record?")) return;
   btn.disabled = true;
   try {
     await apiDelete(`/api/${endpoint}/${btn.dataset[key]}`);
@@ -939,6 +1116,8 @@ function renderAll() {
   if (!state.clients.length) return;
 
   populateSelects();
+  renderClientsTable();
+  renderSitesTable();
   renderMaterialsMaster();
   renderMaterialEntries();
   renderAssetEntries();
@@ -962,6 +1141,8 @@ function renderAll() {
 
 // Scoped re-renders when a filter changes (no data reload needed)
 const SCOPE_RENDER = {
+  clients: () => { renderClientsTable(); },
+  sites: () => { renderSitesTable(); },
   material: () => { renderMaterialEntries(); },
   stock: () => { renderStockBalance(); },
   labour: () => { renderLabourRegister(); },
@@ -977,12 +1158,18 @@ function wireForm(formId, endpoint, buildPayload, successMsg, { keepValues = fal
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
     const fd = new FormData(form);
+    const editId = EDITING[formId];
     setFormBusy(form, true);
     try {
-      await apiPost(endpoint, buildPayload(fd));
-      if (!keepValues) { form.reset(); setDefaultDates(); }
+      if (editId) {
+        await apiPut(`${endpoint}/${editId}`, buildPayload(fd));
+        exitEditMode(form);
+      } else {
+        await apiPost(endpoint, buildPayload(fd));
+        if (!keepValues) { form.reset(); setDefaultDates(); }
+      }
       await loadBootstrap(state.client_id);
-      toast(successMsg);
+      toast(editId ? "Updated" : successMsg);
     } catch (err) {
       toast(err.message, "error");
     } finally {
@@ -992,15 +1179,47 @@ function wireForm(formId, endpoint, buildPayload, successMsg, { keepValues = fal
 }
 
 // ── Wire up static listeners (run once) ──────────────────────────────────
+function activateTab(tab) {
+  const btn = document.querySelector(`.tab-btn[data-tab="${tab}"]`);
+  const panel = document.getElementById(`tab-${tab}`);
+  if (!btn || !panel) return;
+  document.querySelectorAll(".tab-btn").forEach((b) => {
+    const isActive = b === btn;
+    b.classList.toggle("active", isActive);
+    b.setAttribute("aria-selected", isActive ? "true" : "false");
+    b.tabIndex = isActive ? 0 : -1; // roving tabindex (WAI-ARIA tabs pattern)
+  });
+  document.querySelectorAll(".tab-panel").forEach((p) => {
+    const isActive = p === panel;
+    p.classList.toggle("active", isActive);
+    p.tabIndex = isActive ? 0 : -1;
+  });
+  updatePageHeader(tab);
+  localStorage.setItem("khata_tab", tab);
+}
+
 function attachListeners() {
+  document.querySelectorAll(".tab-panel").forEach((p) => p.setAttribute("role", "tabpanel"));
   document.querySelectorAll(".tab-btn").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      document.querySelectorAll(".tab-btn").forEach((b) => b.classList.remove("active"));
-      document.querySelectorAll(".tab-panel").forEach((p) => p.classList.remove("active"));
-      btn.classList.add("active");
-      document.getElementById(`tab-${btn.dataset.tab}`).classList.add("active");
-      updatePageHeader(btn.dataset.tab);
-    });
+    btn.addEventListener("click", () => activateTab(btn.dataset.tab));
+  });
+
+  // Arrow-key navigation between tabs (WAI-ARIA tabs pattern)
+  const tabList = document.querySelector(".side-nav");
+  tabList?.addEventListener("keydown", (e) => {
+    if (!["ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key)) return;
+    const tabs = [...document.querySelectorAll(".tab-btn")];
+    const current = tabs.indexOf(document.activeElement);
+    if (current === -1) return;
+    e.preventDefault();
+    let next = current;
+    if (e.key === "Home") next = 0;
+    else if (e.key === "End") next = tabs.length - 1;
+    else if (e.key === "ArrowDown" || e.key === "ArrowRight") next = (current + 1) % tabs.length;
+    else next = (current - 1 + tabs.length) % tabs.length;
+    const btn = tabs[next];
+    activateTab(btn.dataset.tab);
+    btn.focus();
   });
 
   document.addEventListener("input", (e) => {
@@ -1015,6 +1234,13 @@ function attachListeners() {
   document.addEventListener("click", (e) => {
     const exp = e.target.closest("[data-export]");
     if (exp) { EXPORTS[exp.dataset.export]?.(); return; }
+    const editBtn = e.target.closest(
+      "[data-edit-entry],[data-edit-client],[data-edit-site],[data-edit-vendor],[data-edit-vendor-txn],[data-edit-expense],[data-edit-labourer],[data-edit-labour-payment],[data-edit-receipt]");
+    if (editBtn) {
+      const key = Object.keys(EDIT_HANDLERS).find((k) => editBtn.dataset[k]);
+      if (key) EDIT_HANDLERS[key](editBtn.dataset[key]);
+      return;
+    }
     handleDeleteClick(e);
   });
 
@@ -1028,18 +1254,39 @@ function attachListeners() {
     }
   });
 
-  document.getElementById("btnAddClient").addEventListener("click", () => openModal("modalClient"));
+  document.getElementById("formLogin").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    setFormBusy(form, true);
+    try {
+      await apiPost("/api/login", { password: new FormData(form).get("password") });
+      form.reset();
+      document.getElementById("loginScreen").hidden = true;
+      document.getElementById("loading").hidden = false;
+      await loadBootstrap(localStorage.getItem("khata_client_id") || "");
+    } catch (err) {
+      toast(err.message, "error");
+    } finally {
+      document.getElementById("loading").hidden = true;
+      setFormBusy(form, false);
+    }
+  });
+
+  document.getElementById("btnLogout").addEventListener("click", async () => {
+    try { await apiPost("/api/logout", {}); } catch { /* session pehle se khatam */ }
+    location.reload();
+  });
+
   document.getElementById("btnEmptyAddClient").addEventListener("click", () => openModal("modalClient"));
-  document.getElementById("btnAddSite").addEventListener("click", () => openModal("modalSite"));
   document.querySelectorAll("[data-close-modal]").forEach((btn) =>
-    btn.addEventListener("click", () => btn.closest(".modal-overlay").hidden = true)
+    btn.addEventListener("click", () => closeModal(btn.closest(".modal-overlay").id))
   );
 
   document.querySelectorAll(".modal-overlay").forEach((overlay) => {
-    overlay.addEventListener("click", (e) => { if (e.target === overlay) overlay.hidden = true; });
+    overlay.addEventListener("click", (e) => { if (e.target === overlay) closeModal(overlay.id); });
   });
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") document.querySelectorAll(".modal-overlay").forEach((o) => o.hidden = true);
+    if (e.key === "Escape") document.querySelectorAll(".modal-overlay").forEach((o) => { if (!o.hidden) closeModal(o.id); });
   });
 
   document.getElementById("formClient").addEventListener("submit", async (e) => {
@@ -1049,30 +1296,20 @@ function attachListeners() {
     const sites = (fd.get("sites") || "").split(",").map((s) => s.trim()).filter(Boolean);
     setFormBusy(form, true);
     try {
-      const res = await apiPost("/api/clients", { name: fd.get("name"), sites });
+      const res = await apiPost("/api/clients", {
+        name: fd.get("name"),
+        contact_person: fd.get("contact_person") || "",
+        phone: fd.get("phone") || "",
+        email: fd.get("email") || "",
+        address: fd.get("address") || "",
+        status: fd.get("status") || "Active",
+        sites,
+      });
       form.reset();
       closeModal("modalClient");
       localStorage.setItem("khata_client_id", res.id);
       await loadBootstrap(res.id);
       toast("Client added");
-    } catch (err) {
-      toast(err.message, "error");
-    } finally {
-      setFormBusy(form, false);
-    }
-  });
-
-  document.getElementById("formSite").addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const form = e.target;
-    const fd = new FormData(form);
-    setFormBusy(form, true);
-    try {
-      await apiPost("/api/sites", { name: fd.get("name"), client_id: state.client_id });
-      form.reset();
-      closeModal("modalSite");
-      await loadBootstrap(state.client_id);
-      toast("Site added");
     } catch (err) {
       toast(err.message, "error");
     } finally {
@@ -1093,6 +1330,22 @@ function attachListeners() {
     const unitInput = document.querySelector('#formMaterial input[name="unit"]');
     if (m && m.unit && !unitInput.value) unitInput.value = m.unit;
   });
+
+  wireForm("formClientMgmt", "/api/clients", (fd) => ({
+    name: fd.get("name"),
+    contact_person: fd.get("contact_person") || "",
+    phone: fd.get("phone") || "",
+    email: fd.get("email") || "",
+    address: fd.get("address") || "",
+    status: fd.get("status") || "Active",
+  }), "Client added");
+
+  wireForm("formSiteMgmt", "/api/sites", (fd) => ({
+    client_id: fd.get("client_id"),
+    name: fd.get("name"),
+    address: fd.get("address") || "",
+    status: fd.get("status") || "Active",
+  }), "Site created");
 
   wireForm("formMaterialMaster", "/api/materials", (fd) => ({
     client_id: state.client_id,
@@ -1176,12 +1429,12 @@ function attachListeners() {
 (async function init() {
   setDefaultDates();
   attachListeners();
-  updatePageHeader("dashboard");
+  activateTab(localStorage.getItem("khata_tab") || "dashboard");
   try {
     const savedClientId = localStorage.getItem("khata_client_id") || "";
     await loadBootstrap(savedClientId);
   } catch (err) {
-    toast(err.message, "error");
+    if (!err.authRequired) toast(err.message, "error");
   } finally {
     document.getElementById("loading").hidden = true;
   }

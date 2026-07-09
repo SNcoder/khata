@@ -37,6 +37,24 @@ Bas! Pehla client add karo aur entries shuru karo.
 
 ---
 
+## Password lagana (optional, deploy karne se pehle zaroori)
+
+By default app bina login ke khulta hai (local use ke liye theek hai).
+Password lagane ke liye app start karne se pehle environment variable set karo:
+
+    # Windows (PowerShell)
+    $env:APP_PASSWORD = "apna-password"
+    python app.py
+
+    # Mac / Linux
+    APP_PASSWORD="apna-password" python app.py
+
+Railway/Render par deploy karte waqt `APP_PASSWORD` ke saath `SECRET_KEY` bhi set karo
+(koi bhi lambi random string) — warna har restart par sabko dobara login karna padega.
+Login 30 din tak yaad rehta hai; sidebar ke neeche Logout button hai.
+
+---
+
 ## Data kahan save hota hai?
 
 Sab data **`database/khata.db`** file mein save hota hai (SQLite database).
@@ -73,7 +91,7 @@ IP address jaanne ke liye: Windows par `ipconfig`, Mac/Linux par `ifconfig` chal
 
 ## Aage kya add ho sakta hai
 
-- Login / users (site engineer vs account officer ke alag rights)
+- Multi-user roles (site engineer vs account officer ke alag rights)
 - Excel/PDF export of reports
 - Bill ki photo upload
 - Cloud hosting (taaki kahin se bhi khule) — Railway/Render par ₹0–500/month mein ho jata hai
