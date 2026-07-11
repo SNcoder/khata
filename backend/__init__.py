@@ -4,18 +4,24 @@ import os
 import secrets
 from datetime import timedelta
 
-from flask import Flask, jsonify, request, send_from_directory, session
+from flask import Flask, jsonify, request, send_from_directory
 from werkzeug.exceptions import HTTPException
 
 from database import SQLALCHEMY_DATABASE_URI, USE_PG, db, init_db
+from database.auth_models import seed_auth
 
+from .admin_routes import admin_bp
+from .auth import auth_bp, load_current_user
 from .routes import api_bp
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FRONTEND_DIR = os.path.join(BASE_DIR, "frontend")
 
-# APP_PASSWORD set karo to login zaroori hoga; khali chodo to auth off (local dev)
-APP_PASSWORD = os.environ.get("APP_PASSWORD", "")
+# Pehli baar chalne par is email/password se admin user banta hai (baaki sab
+# users invite email se apna password khud set karte hain). Login ke baad
+# Admin Panel se ye password zaroor badlo.
+ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL", "admin@sitekhata.local")
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "admin123")
 
 
 def create_app():
@@ -26,31 +32,13 @@ def create_app():
     app.config["SQLALCHEMY_DATABASE_URI"] = SQLALCHEMY_DATABASE_URI
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
     db.init_app(app)
+
+    # Har /api/ request par session user load + login check (auth.py)
+    app.before_request(load_current_user)
+
+    app.register_blueprint(auth_bp)
     app.register_blueprint(api_bp)
-
-    @app.post("/api/login")
-    def login():
-        if not APP_PASSWORD:
-            return jsonify({"ok": True})
-        body = request.get_json(force=True)
-        if secrets.compare_digest(body.get("password") or "", APP_PASSWORD):
-            session.permanent = True
-            session["authed"] = True
-            return jsonify({"ok": True})
-        return jsonify({"error": "Password galat hai"}), 401
-
-    @app.post("/api/logout")
-    def logout():
-        session.clear()
-        return jsonify({"ok": True})
-
-    @app.before_request
-    def require_auth():
-        if (APP_PASSWORD
-                and request.path.startswith("/api/")
-                and request.path != "/api/login"
-                and not session.get("authed")):
-            return jsonify({"error": "Login required"}), 401
+    app.register_blueprint(admin_bp)
 
     @app.route("/")
     def index():
@@ -74,4 +62,6 @@ def create_app():
 
     with app.app_context():
         init_db()
+        if seed_auth(ADMIN_EMAIL, ADMIN_PASSWORD):
+            print(f"Default admin user bana: '{ADMIN_EMAIL}' — pehla login karke password badlo!")
     return app

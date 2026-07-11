@@ -1,2 +1,8 @@
 __pycache__/
 *.pyc
+
+# Environment / secrets — commit .env.example, NOT .env
+.env
+
+# Virtualenv
+.venv/

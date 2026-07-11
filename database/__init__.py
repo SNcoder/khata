@@ -21,6 +21,20 @@ from .models import (
     init_db,
 )
 
+# Auth/RBAC models — import zaroori hai taaki db.create_all() inki tables bhi banaye
+from .auth_models import (  # noqa: E402
+    AuditLog,
+    Role,
+    RolePermission,
+    User,
+    UserClient,
+    UserPermission,
+    UserSite,
+    invite_expiry_ts,
+    new_invite_token,
+    seed_auth,
+)
+
 __all__ = [
     "DATABASE_URL",
     "SQLALCHEMY_DATABASE_URI",
@@ -38,4 +52,14 @@ __all__ = [
     "Labourer",
     "LabourPayment",
     "Receipt",
+    "User",
+    "Role",
+    "RolePermission",
+    "UserPermission",
+    "UserClient",
+    "UserSite",
+    "AuditLog",
+    "seed_auth",
+    "new_invite_token",
+    "invite_expiry_ts",
 ]

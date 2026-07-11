@@ -7,6 +7,14 @@ Yahan sirf URL/flags compute hote hain — actual engine/session Flask-SQLAlchem
 """
 
 import os
+from pathlib import Path
+
+from dotenv import load_dotenv
+
+# Project root ki .env yahan se load hoti hai — ye module har code path me sabse
+# pehle import hota hai, isliye baaki jagah os.environ padhne se pehle .env values
+# available ho jaati hain (DATABASE_URL, APP_PASSWORD, SECRET_KEY, PORT, ...).
+load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 DATABASE_URL = os.environ.get("DATABASE_URL", "")
 

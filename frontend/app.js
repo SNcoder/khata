@@ -2,6 +2,7 @@
 
 const state = {
   auth: false,
+  me: null,
   clients: [],
   client_id: "",
   all_sites: [],
@@ -111,6 +112,7 @@ const TAB_META = {
   expenses:  ["Site Expenses", "Har site ka category-wise kharcha"],
   payments:  ["Payment Register", "Saare outgoing payments ek jagah"],
   receipts:  ["Receipt Register", "Saare incoming payments ka hisaab"],
+  admin:     ["Admin Panel", "Users, roles, permissions aur audit log"],
 };
 
 function updatePageHeader(tab) {
@@ -297,6 +299,52 @@ const EDIT_HANDLERS = {
   editReceipt:       (id) => startSimpleEdit("formReceipt", state.receipts, id),
 };
 
+// ── Permissions (RBAC) ───────────────────────────────────────────────────
+function isAdmin() {
+  return !!state.me?.is_admin;
+}
+
+function can(module, action) {
+  if (!state.me) return false;
+  if (state.me.is_admin) return true;
+  return !!state.me.permissions?.[module]?.[action];
+}
+
+// Kis module ke create/edit forms kaunse hain (gating ke liye)
+const MODULE_FORMS = {
+  clients: ["formClientMgmt"],
+  sites: ["formSiteMgmt"],
+  material: ["formMaterial"],
+  assets: ["formAsset"],
+  labour: ["formLabour", "formLabourPay"],
+  vendors: ["formVendor", "formVendorTxn"],
+  expenses: ["formExpense"],
+  receipts: ["formReceipt"],
+};
+
+// Section-level classes + form hiding — server bhi enforce karta hai,
+// ye sirf UI ko permissions ke hisaab se saaf rakhta hai.
+function applyPermissionGating() {
+  for (const module of Object.keys(MODULE_FORMS)) {
+    const section = document.getElementById(`tab-${module}`);
+    if (!section) continue;
+    section.classList.toggle("perm-no-edit", !can(module, "edit"));
+    section.classList.toggle("perm-no-delete", !can(module, "delete"));
+    const showForm = can(module, "create") || can(module, "edit");
+    for (const id of MODULE_FORMS[module]) {
+      const form = document.getElementById(id);
+      if (form) (form.closest(".card") || form).hidden = !showForm;
+    }
+  }
+  // Export sab tabs par gate hota hai (payments included)
+  for (const tab of ["material", "assets", "labour", "vendors", "expenses", "payments", "receipts"]) {
+    document.getElementById(`tab-${tab}`)?.classList.toggle("perm-no-export", !can(tab, "export"));
+  }
+  // Materials master inline form + chips ke delete buttons material module se chalte hain
+  const mm = document.getElementById("formMaterialMaster");
+  if (mm) mm.hidden = !can("material", "create");
+}
+
 // ── Lookups ──────────────────────────────────────────────────────────────
 function vendorName(id) {
   return state.vendors.find((v) => v.id === id)?.name || "";
@@ -316,12 +364,55 @@ async function loadBootstrap(clientId) {
 }
 
 // ── Rendering: shell ─────────────────────────────────────────────────────
-function renderShell() {
+// Empty state vs app — admin tab par admin panel hamesha khulta hai,
+// chahe abhi koi client na ho (users/roles wahan se hi bante hain).
+function updateAppVisibility() {
   const hasClients = state.clients.length > 0;
-  document.getElementById("emptyState").hidden = hasClients;
-  document.getElementById("app").hidden = !hasClients;
-  document.getElementById("sitesBar").hidden = !hasClients;
-  document.getElementById("btnLogout").hidden = !state.auth;
+  const activeTab = document.querySelector(".tab-btn.active")?.dataset.tab;
+  const adminView = isAdmin() && activeTab === "admin";
+  document.getElementById("emptyState").hidden = hasClients || adminView || !state.me;
+  document.getElementById("app").hidden = !hasClients && !adminView;
+  document.getElementById("sitesBar").hidden = !hasClients || activeTab === "admin";
+}
+
+function renderShell() {
+  document.getElementById("btnLogout").hidden = !state.me;
+  document.getElementById("btnChangePw").hidden = !state.me;
+
+  // Logged-in user chip
+  const chip = document.getElementById("userChip");
+  chip.hidden = !state.me;
+  if (state.me) {
+    const label = state.me.full_name || state.me.email;
+    document.getElementById("userChipAvatar").innerHTML = avatarHtml(label);
+    document.getElementById("userChipName").textContent = label;
+    document.getElementById("userChipRole").textContent = state.me.role_name || "";
+  }
+
+  // Sidebar: sirf wahi modules jinki view permission hai; Admin Panel sirf admin ko
+  const adminOk = isAdmin();
+  document.querySelector(".admin-nav-label").hidden = !adminOk;
+  let firstVisible = "";
+  document.querySelectorAll(".tab-btn").forEach((btn) => {
+    const tab = btn.dataset.tab;
+    const show = tab === "admin" ? adminOk : can(tab, "view");
+    btn.hidden = !show;
+    if (show && !firstVisible) firstVisible = tab;
+  });
+  const activeBtn = document.querySelector(".tab-btn.active");
+  if ((!activeBtn || activeBtn.hidden) && firstVisible) activateTab(firstVisible);
+  if (adminOk && document.querySelector(".tab-btn.active")?.dataset.tab === "admin" && !admin.loaded) {
+    loadAdminPanel();
+  }
+
+  // Empty state — create permission hai to Add Client, warna admin se contact karo
+  const canCreateClient = can("clients", "create");
+  document.getElementById("btnEmptyAddClient").hidden = !canCreateClient;
+  document.querySelector("#emptyState p").textContent = canCreateClient
+    ? "Koi client nahi mila. Pehla client add karo aur entries shuru karo."
+    : "Aapko abhi koi client/site assign nahi hui hai — admin se contact karo.";
+
+  updateAppVisibility();
 
   const sel = document.getElementById("clientSelect");
   sel.innerHTML = '<option value="">— Select client —</option>' +
@@ -1110,9 +1201,419 @@ const EXPORTS = {
     FILTERED.receipts.map((r) => [r.date, r.from_name, r.site, r.amount, r.mode, r.reference, r.note])),
 };
 
+// ── Admin Panel ──────────────────────────────────────────────────────────
+const admin = {
+  loaded: false, users: [], roles: [], clients: [], sites: [],
+  modules: [], actions: [], accessUserId: null,
+};
+let editingUserId = null;
+
+async function loadAdminPanel() {
+  if (!isAdmin()) return;
+  try {
+    const data = await apiGet("/api/admin/bootstrap");
+    Object.assign(admin, data, { loaded: true });
+    renderAdmin();
+    await loadAudit();
+  } catch (err) {
+    toast(err.message, "error");
+  }
+}
+
+function renderAdmin() {
+  setStat("statUserTotal", admin.users.length);
+  setStat("statUserActive", admin.users.filter((u) => u.status === "Active").length);
+  setStat("statRoleTotal", admin.roles.length);
+
+  // Role dropdowns (user form + matrix selector)
+  const roleOptions = admin.roles.map((r) => `<option value="${r.id}">${escapeHtml(r.name)}</option>`).join("");
+  for (const id of ["formUser-role_id", "permRoleSelect"]) {
+    const sel = document.getElementById(id);
+    const prev = sel.value;
+    sel.innerHTML = roleOptions;
+    if ([...sel.options].some((o) => o.value === prev)) sel.value = prev;
+  }
+  // Matrix by default pehle non-admin role par khule (admin editable nahi hota)
+  const permSel = document.getElementById("permRoleSelect");
+  if (admin.roles.find((r) => r.id === permSel.value)?.is_admin) {
+    const firstEditable = admin.roles.find((r) => !r.is_admin);
+    if (firstEditable) permSel.value = firstEditable.id;
+  }
+
+  renderUserTable();
+  renderRoleTable();
+  renderPermMatrix();
+
+  const audSel = document.getElementById("fltAudModule");
+  const prev = audSel.value;
+  audSel.innerHTML = '<option value="">— all —</option>' +
+    ["users", "roles", ...admin.modules.map((m) => m.key)]
+      .map((k) => `<option value="${k}">${k}</option>`).join("");
+  if ([...audSel.options].some((o) => o.value === prev)) audSel.value = prev;
+}
+
+function accessSummary(u) {
+  if (u.is_admin) return '<span class="badge badge-Active">Full access</span>';
+  const parts = [];
+  if (u.client_ids.length) parts.push(`${u.client_ids.length} client`);
+  if (u.site_ids.length) parts.push(`${u.site_ids.length} site`);
+  const ov = Object.keys(u.overrides || {}).length;
+  if (ov) parts.push(`${ov} override`);
+  return parts.length ? escapeHtml(parts.join(" · ")) : '<span class="txt-danger">kuch assign nahi</span>';
+}
+
+function renderUserTable() {
+  const tbody = document.querySelector("#userTable tbody");
+  setCountPill("userTableCount", admin.users.length);
+  if (!admin.users.length) {
+    tbody.innerHTML = emptyRow(7, "Koi user nahi");
+    return;
+  }
+  tbody.innerHTML = admin.users.map((u) => {
+    const next = u.status === "Active" ? "Inactive" : "Active";
+    const self = u.id === state.me.id;
+    const canToggleStatus = !self && u.status !== "Pending";
+    const resetLabel = u.status === "Pending" ? "Resend Invite" : "Force Password Reset";
+    return `<tr>
+      <td>${avatarHtml(u.full_name || u.email)}${escapeHtml(u.full_name || u.email)}${self ? ' <span class="hint">(aap)</span>' : ""}</td>
+      <td>${escapeHtml(u.email)}</td>
+      <td><span class="role-pill${u.is_admin ? " role-admin" : ""}">${escapeHtml(u.role_name)}</span></td>
+      <td>${accessSummary(u)}</td>
+      <td>${escapeHtml(u.last_login || "—")}</td>
+      <td><span class="badge badge-${u.status}">${escapeHtml(u.status)}</span>
+          ${canToggleStatus ? `<button class="btn-link" data-user-status="${u.id}" data-next="${next}">${next === "Active" ? "Activate" : "Deactivate"}</button>` : ""}</td>
+      <td class="row-actions">
+        <button class="btn btn-secondary btn-sm" data-user-access="${u.id}">Access</button>
+        <button class="btn btn-secondary btn-sm" data-user-resetpw="${u.id}">${resetLabel}</button>
+        ${EDIT_BTN("data-user-edit", u.id)}${self ? "" : TRASH_BTN("data-user-del", u.id)}
+      </td>
+    </tr>`;
+  }).join("");
+}
+
+function renderRoleTable() {
+  const tbody = document.querySelector("#roleTable tbody");
+  setCountPill("roleTableCount", admin.roles.length);
+  tbody.innerHTML = admin.roles.map((r) => {
+    const users = admin.users.filter((u) => u.role_id === r.id).length;
+    return `<tr>
+      <td><span class="role-pill${r.is_admin ? " role-admin" : ""}">${escapeHtml(r.name)}</span>${r.is_system ? ' <span class="hint">system</span>' : ""}</td>
+      <td>${escapeHtml(r.description || "")}</td>
+      <td class="num">${users}</td>
+      <td class="row-actions">${r.is_system ? "" : TRASH_BTN("data-role-del", r.id)}</td>
+    </tr>`;
+  }).join("");
+}
+
+function renderPermMatrix() {
+  const sel = document.getElementById("permRoleSelect");
+  const role = admin.roles.find((r) => r.id === sel.value) || admin.roles[0];
+  if (!role) return;
+  sel.value = role.id;
+  const locked = role.is_admin;
+  document.getElementById("btnSaveMatrix").disabled = locked;
+  document.getElementById("matrixHint").textContent = locked
+    ? "Admin role ke paas hamesha full access hota hai — iska matrix edit nahi hota."
+    : "Row = module, column = action. View off = module us role ke users se hide. Save karte hi turant lagoo ho jaata hai.";
+  const table = document.getElementById("permMatrixTable");
+  table.querySelector("thead").innerHTML =
+    `<tr><th>Module</th>${admin.actions.map((a) => `<th class="ctr">${escapeHtml(a)}</th>`).join("")}</tr>`;
+  table.querySelector("tbody").innerHTML = admin.modules.map((m) => `<tr>
+      <td>${escapeHtml(m.label)}</td>
+      ${admin.actions.map((a) =>
+        `<td class="ctr"><input type="checkbox" data-pm-module="${m.key}" data-pm-action="${a}"
+          ${role.permissions?.[m.key]?.[a] ? "checked" : ""} ${locked ? "disabled" : ""}></td>`).join("")}
+    </tr>`).join("");
+}
+
+async function savePermMatrix() {
+  const roleId = document.getElementById("permRoleSelect").value;
+  const matrix = {};
+  document.querySelectorAll("#permMatrixTable input[type=checkbox]").forEach((cb) => {
+    (matrix[cb.dataset.pmModule] = matrix[cb.dataset.pmModule] || {})[cb.dataset.pmAction] = cb.checked;
+  });
+  try {
+    await apiPut(`/api/admin/roles/${roleId}/permissions`, matrix);
+    toast("Permissions saved — turant lagoo");
+    await loadAdminPanel();
+  } catch (err) {
+    toast(err.message, "error");
+  }
+}
+
+// ── User add/edit form ──
+// Add mode: sirf email/name/role/phone — password admin kabhi set nahi karta,
+// user invite email se khud karta hai. Edit mode: wahi fields + Status
+// (jo tabhi Active ho sakta hai jab user apna password set kar chuka ho).
+function setUserFormMode(editUser) {
+  const form = document.getElementById("formUser");
+  editingUserId = editUser ? editUser.id : null;
+  form.classList.toggle("is-editing", !!editUser);
+  document.getElementById("formUserTitle").textContent =
+    editUser ? `Edit User — ${editUser.email}` : "Add User";
+  form.querySelector(".field-status").hidden = !editUser;
+  setSubmitLabel(form, editUser ? "Update User" : null);
+  let cancel = form.querySelector(".btn-cancel-edit");
+  if (editUser) {
+    if (!cancel) {
+      cancel = document.createElement("button");
+      cancel.type = "button";
+      cancel.className = "btn btn-secondary btn-cancel-edit";
+      cancel.textContent = "Cancel";
+      cancel.addEventListener("click", () => { form.reset(); setUserFormMode(null); });
+      form.querySelector('button[type="submit"]').after(cancel);
+    }
+    form.reset();
+    fillForm(form, editUser);
+    form.scrollIntoView({ behavior: REDUCED_MOTION ? "auto" : "smooth", block: "nearest" });
+    form.elements.email.focus();
+  } else if (cancel) {
+    cancel.remove();
+  }
+}
+
+// ── Access modal (assignments + overrides) ──
+function openAccessModal(uid) {
+  const u = admin.users.find((x) => x.id === uid);
+  if (!u) return;
+  admin.accessUserId = uid;
+  document.getElementById("modalAccessTitle").textContent =
+    `Access — ${u.full_name || u.email}` + (u.is_admin ? " (admin: hamesha full access)" : "");
+
+  const tree = document.getElementById("accessTree");
+  tree.innerHTML = admin.clients.map((cl) => {
+    const clientChecked = u.client_ids.includes(cl.id);
+    const sites = admin.sites.filter((s) => s.client_id === cl.id);
+    return `<div class="access-client">
+      <label class="access-client-row"><input type="checkbox" data-acc-client="${cl.id}" ${clientChecked ? "checked" : ""}>
+        <strong>${escapeHtml(cl.name)}</strong> <span class="hint">poora client (saari sites)</span></label>
+      <div class="access-sites">${sites.map((s) =>
+        `<label><input type="checkbox" data-acc-site="${s.id}" data-acc-site-client="${cl.id}"
+          ${u.site_ids.includes(s.id) ? "checked" : ""} ${clientChecked ? "disabled" : ""}> ${escapeHtml(s.name)}</label>`).join("")
+        || '<span class="hint">is client ki koi site nahi</span>'}</div>
+    </div>`;
+  }).join("") || '<span class="hint">Pehle koi client banao</span>';
+
+  const table = document.getElementById("overrideTable");
+  const roleMatrix = admin.roles.find((r) => r.id === u.role_id)?.permissions || {};
+  table.querySelector("thead").innerHTML =
+    `<tr><th>Module</th>${admin.actions.map((a) => `<th class="ctr">${escapeHtml(a)}</th>`).join("")}</tr>`;
+  table.querySelector("tbody").innerHTML = admin.modules.map((m) => `<tr>
+      <td>${escapeHtml(m.label)}</td>
+      ${admin.actions.map((a) => {
+        const ov = u.overrides?.[m.key]?.[a];
+        const cur = ov === true ? "1" : ov === false ? "0" : "";
+        const roleVal = roleMatrix?.[m.key]?.[a] ? "✓" : "✗";
+        return `<td class="ctr"><select class="ov-select" data-ov-module="${m.key}" data-ov-action="${a}" ${u.is_admin ? "disabled" : ""}>
+          <option value=""${cur === "" ? " selected" : ""}>— (${roleVal})</option>
+          <option value="1"${cur === "1" ? " selected" : ""}>✓ Allow</option>
+          <option value="0"${cur === "0" ? " selected" : ""}>✗ Deny</option>
+        </select></td>`;
+      }).join("")}
+    </tr>`).join("");
+  openModal("modalAccess");
+}
+
+async function saveAccess() {
+  const client_ids = [...document.querySelectorAll("#accessTree [data-acc-client]:checked")]
+    .map((cb) => cb.dataset.accClient);
+  const site_ids = [...document.querySelectorAll("#accessTree [data-acc-site]:checked")]
+    .filter((cb) => !client_ids.includes(cb.dataset.accSiteClient)) // poora client mila to sites redundant
+    .map((cb) => cb.dataset.accSite);
+  const overrides = {};
+  document.querySelectorAll("#overrideTable .ov-select").forEach((sel) => {
+    if (sel.value === "") return;
+    (overrides[sel.dataset.ovModule] = overrides[sel.dataset.ovModule] || {})[sel.dataset.ovAction] =
+      sel.value === "1";
+  });
+  try {
+    await apiPut(`/api/admin/users/${admin.accessUserId}/access`, { client_ids, site_ids, overrides });
+    closeModal("modalAccess");
+    toast("Access updated — user ke agle request se lagoo");
+    await loadAdminPanel();
+  } catch (err) {
+    toast(err.message, "error");
+  }
+}
+
+// ── Audit log ──
+async function loadAudit() {
+  const p = new URLSearchParams();
+  if (val("fltAudUser").trim()) p.set("username", val("fltAudUser").trim());
+  if (val("fltAudModule")) p.set("module", val("fltAudModule"));
+  if (val("fltAudFrom")) p.set("from", val("fltAudFrom"));
+  if (val("fltAudTo")) p.set("to", val("fltAudTo"));
+  try {
+    const data = await apiGet(`/api/admin/audit?${p.toString()}`);
+    const tbody = document.querySelector("#auditTable tbody");
+    setCountPill("auditTableCount", data.logs.length);
+    tbody.innerHTML = data.logs.map((l) => `<tr>
+        <td>${escapeHtml(l.ts)}</td>
+        <td>${escapeHtml(l.username)}</td>
+        <td><span class="audit-badge audit-${escapeHtml(l.action)}">${escapeHtml(l.action)}</span></td>
+        <td>${escapeHtml(l.module || "")}</td>
+        <td>${escapeHtml(l.detail || "")}</td>
+        <td>${escapeHtml(l.ip || "")}</td>
+      </tr>`).join("") || emptyRow(6, "Koi log nahi");
+  } catch (err) {
+    toast(err.message, "error");
+  }
+}
+
+// ── Admin listeners (attachListeners se call hota hai) ──
+function attachAdminListeners() {
+  document.getElementById("tab-admin").addEventListener("click", async (e) => {
+    const sub = e.target.closest(".sub-btn");
+    if (sub) {
+      document.querySelectorAll(".sub-btn").forEach((b) => b.classList.toggle("active", b === sub));
+      document.querySelectorAll(".admin-sub").forEach((p) =>
+        p.classList.toggle("active", p.id === `sub-${sub.dataset.sub}`));
+      return;
+    }
+    const btn = e.target.closest(
+      "[data-user-edit],[data-user-del],[data-user-access],[data-user-resetpw],[data-user-status],[data-role-del]");
+    if (!btn) return;
+    try {
+      if (btn.dataset.userEdit) {
+        setUserFormMode(admin.users.find((u) => u.id === btn.dataset.userEdit));
+      } else if (btn.dataset.userAccess) {
+        openAccessModal(btn.dataset.userAccess);
+      } else if (btn.dataset.userResetpw) {
+        const u = admin.users.find((x) => x.id === btn.dataset.userResetpw);
+        const isReset = u?.status === "Active";
+        if (!confirm(isReset
+              ? "Password reset email bhejni hai? User agla naya password set karne tak login nahi kar payega."
+              : "Invite email dobara bhejni hai?")) return;
+        const res = await apiPost(`/api/admin/users/${btn.dataset.userResetpw}/send_reset`, {});
+        if (res.email_sent) {
+          toast("Email bhej di gayi");
+        } else {
+          alert("Email bhejne me dikkat aayi (SMTP configure nahi hai?) — ye link manually user ko bhejo:\n\n" + res.invite_link);
+        }
+        await loadAdminPanel();
+      } else if (btn.dataset.userStatus) {
+        await apiPost(`/api/admin/users/${btn.dataset.userStatus}/status`, { status: btn.dataset.next });
+        toast(`User ${btn.dataset.next === "Active" ? "activate" : "deactivate"} ho gaya`);
+        await loadAdminPanel();
+      } else if (btn.dataset.userDel) {
+        if (!confirm("User ko permanently delete karna hai? Uske assignments bhi delete honge.")) return;
+        await apiDelete(`/api/admin/users/${btn.dataset.userDel}`);
+        toast("User deleted");
+        await loadAdminPanel();
+      } else if (btn.dataset.roleDel) {
+        if (!confirm("Role delete karna hai?")) return;
+        await apiDelete(`/api/admin/roles/${btn.dataset.roleDel}`);
+        toast("Role deleted");
+        await loadAdminPanel();
+      }
+    } catch (err) {
+      toast(err.message, "error");
+    }
+  });
+
+  document.getElementById("formUser").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const fd = new FormData(form);
+    const payload = {
+      email: fd.get("email") || "",
+      full_name: fd.get("full_name") || "",
+      phone: fd.get("phone") || "",
+      role_id: fd.get("role_id"),
+      status: fd.get("status") || "Active",
+    };
+    setFormBusy(form, true);
+    try {
+      if (editingUserId) {
+        await apiPut(`/api/admin/users/${editingUserId}`, payload);
+        toast("User updated");
+      } else {
+        const res = await apiPost("/api/admin/users", payload);
+        if (res.email_sent) {
+          toast("User ban gaya — invite email bhej di gayi");
+        } else {
+          alert("User ban gaya, lekin invite email bhejne me dikkat aayi (SMTP configure nahi hai?) — ye link manually bhejo:\n\n" + res.invite_link);
+        }
+      }
+      form.reset();
+      setUserFormMode(null);
+      await loadAdminPanel();
+    } catch (err) {
+      toast(err.message, "error");
+    } finally {
+      setFormBusy(form, false);
+    }
+  });
+
+  document.getElementById("formRole").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const fd = new FormData(form);
+    setFormBusy(form, true);
+    try {
+      await apiPost("/api/admin/roles", { name: fd.get("name"), description: fd.get("description") || "" });
+      form.reset();
+      toast("Role ban gaya — ab matrix me permissions set karo");
+      await loadAdminPanel();
+    } catch (err) {
+      toast(err.message, "error");
+    } finally {
+      setFormBusy(form, false);
+    }
+  });
+
+  document.getElementById("permRoleSelect").addEventListener("change", renderPermMatrix);
+  document.getElementById("btnSaveMatrix").addEventListener("click", savePermMatrix);
+  document.getElementById("btnSaveAccess").addEventListener("click", saveAccess);
+
+  // Client tick = saari sites — individual site checkboxes disable
+  document.getElementById("accessTree").addEventListener("change", (e) => {
+    const cb = e.target.closest("[data-acc-client]");
+    if (!cb) return;
+    document.querySelectorAll(`#accessTree [data-acc-site-client="${cb.dataset.accClient}"]`)
+      .forEach((s) => { s.disabled = cb.checked; });
+  });
+
+  document.getElementById("btnAuditRefresh").addEventListener("click", loadAudit);
+  for (const id of ["fltAudModule", "fltAudFrom", "fltAudTo"]) {
+    document.getElementById(id).addEventListener("change", loadAudit);
+  }
+  document.getElementById("fltAudUser").addEventListener("change", loadAudit);
+
+  // Apna password badlo (sab users ke liye)
+  document.getElementById("btnChangePw").addEventListener("click", () => {
+    document.getElementById("formChangePw").reset();
+    openModal("modalChangePw");
+  });
+  document.getElementById("formChangePw").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const fd = new FormData(form);
+    if (fd.get("new_password") !== fd.get("confirm_password")) {
+      toast("Naya password aur confirm match nahi kar rahe", "error");
+      return;
+    }
+    setFormBusy(form, true);
+    try {
+      await apiPost("/api/change_password", {
+        current_password: fd.get("current_password"),
+        new_password: fd.get("new_password"),
+      });
+      closeModal("modalChangePw");
+      form.reset();
+      toast("Password badal gaya");
+    } catch (err) {
+      toast(err.message, "error");
+    } finally {
+      setFormBusy(form, false);
+    }
+  });
+}
+
 // ── Full render ──────────────────────────────────────────────────────────
 function renderAll() {
   renderShell();
+  applyPermissionGating();
   if (!state.clients.length) return;
 
   populateSelects();
@@ -1195,6 +1696,8 @@ function activateTab(tab) {
     p.tabIndex = isActive ? 0 : -1;
   });
   updatePageHeader(tab);
+  updateAppVisibility();
+  if (tab === "admin" && isAdmin() && !admin.loaded) loadAdminPanel();
   localStorage.setItem("khata_tab", tab);
 }
 
@@ -1257,12 +1760,14 @@ function attachListeners() {
   document.getElementById("formLogin").addEventListener("submit", async (e) => {
     e.preventDefault();
     const form = e.target;
+    const fd = new FormData(form);
     setFormBusy(form, true);
     try {
-      await apiPost("/api/login", { password: new FormData(form).get("password") });
+      await apiPost("/api/login", { email: fd.get("email"), password: fd.get("password") });
       form.reset();
       document.getElementById("loginScreen").hidden = true;
       document.getElementById("loading").hidden = false;
+      admin.loaded = false; // naya user — admin panel dobara load hoga
       await loadBootstrap(localStorage.getItem("khata_client_id") || "");
     } catch (err) {
       toast(err.message, "error");
@@ -1423,6 +1928,70 @@ function attachListeners() {
     site: fd.get("site") || "",
     note: fd.get("note") || "",
   }), "Receipt added");
+
+  attachAdminListeners();
+}
+
+// ── Invite / set-password flow (?invite=TOKEN in URL) ────────────────────
+function getInviteToken() {
+  return new URLSearchParams(location.search).get("invite") || "";
+}
+
+function clearInviteParam() {
+  const url = new URL(location.href);
+  url.searchParams.delete("invite");
+  history.replaceState({}, "", url.pathname + url.search + url.hash);
+}
+
+// True return karta hai agar invite screen le raha hai control — us case me
+// init() normal login/bootstrap flow skip kar deta hai.
+async function tryInviteFlow() {
+  const token = getInviteToken();
+  if (!token) return false;
+
+  document.getElementById("loading").hidden = true;
+  document.getElementById("app").hidden = true;
+  document.getElementById("emptyState").hidden = true;
+  const scr = document.getElementById("inviteScreen");
+
+  let info;
+  try {
+    info = await apiGet(`/api/invite/${encodeURIComponent(token)}`);
+  } catch (err) {
+    toast(err.message, "error");
+    clearInviteParam();
+    return false;
+  }
+
+  document.getElementById("inviteForEmail").textContent =
+    `${info.full_name || info.email} (${info.email}) — apna password set karo`;
+  scr.hidden = false;
+
+  document.getElementById("formAcceptInvite").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const fd = new FormData(form);
+    if (fd.get("password") !== fd.get("confirm_password")) {
+      toast("Password aur confirm match nahi kar rahe", "error");
+      return;
+    }
+    setFormBusy(form, true);
+    try {
+      await apiPost("/api/accept_invite", { token, password: fd.get("password") });
+      clearInviteParam();
+      scr.hidden = true;
+      document.getElementById("loading").hidden = false;
+      await loadBootstrap(localStorage.getItem("khata_client_id") || "");
+      toast("Password set ho gaya — welcome!");
+    } catch (err) {
+      toast(err.message, "error");
+    } finally {
+      setFormBusy(form, false);
+      document.getElementById("loading").hidden = true;
+    }
+  }, { once: true });
+
+  return true;
 }
 
 // ── Init ─────────────────────────────────────────────────────────────────
@@ -1430,6 +1999,7 @@ function attachListeners() {
   setDefaultDates();
   attachListeners();
   activateTab(localStorage.getItem("khata_tab") || "dashboard");
+  if (await tryInviteFlow()) return;
   try {
     const savedClientId = localStorage.getItem("khata_client_id") || "";
     await loadBootstrap(savedClientId);

@@ -32,6 +32,8 @@
     <symbol id="i-export" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></symbol>
     <symbol id="i-edit" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4z"/></symbol>
     <symbol id="i-logout" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></symbol>
+    <symbol id="i-key" viewBox="0 0 24 24"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></symbol>
   </defs>
 </svg>
 
@@ -45,9 +47,23 @@
   <form id="formLogin" class="login-card">
     <span class="brand-mark"><svg class="icon" aria-hidden="true"><use href="#i-book"/></svg></span>
     <h2>Site Khata</h2>
-    <p>Continue karne ke liye app password daalo</p>
-    <input type="password" name="password" placeholder="App password" autocomplete="current-password" aria-label="App password" required>
+    <p>Apne account se login karo</p>
+    <input type="email" name="email" placeholder="Email" autocomplete="username" aria-label="Email" required>
+    <input type="password" name="password" placeholder="Password" autocomplete="current-password" aria-label="Password" required>
     <button type="submit" class="btn btn-primary">Login</button>
+  </form>
+</div>
+
+<!-- Invite / password-reset link (?invite=TOKEN) par ye screen khulti hai —
+     login se pehle user apna password set karta hai -->
+<div id="inviteScreen" class="login-screen" hidden>
+  <form id="formAcceptInvite" class="login-card">
+    <span class="brand-mark"><svg class="icon" aria-hidden="true"><use href="#i-book"/></svg></span>
+    <h2>Set Your Password</h2>
+    <p id="inviteForEmail">Account activate karne ke liye naya password set karo</p>
+    <input type="password" name="password" placeholder="New Password (min 6 chars)" autocomplete="new-password" aria-label="New Password" minlength="6" required>
+    <input type="password" name="confirm_password" placeholder="Confirm Password" autocomplete="new-password" aria-label="Confirm Password" minlength="6" required>
+    <button type="submit" class="btn btn-primary">Set Password &amp; Login</button>
   </form>
 </div>
 
@@ -72,10 +88,19 @@
       <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-expenses" data-tab="expenses"><svg class="icon" aria-hidden="true"><use href="#i-card"/></svg><span>Expenses</span></button>
       <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-payments" data-tab="payments"><svg class="icon" aria-hidden="true"><use href="#i-wallet"/></svg><span>Payments</span></button>
       <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-receipts" data-tab="receipts"><svg class="icon" aria-hidden="true"><use href="#i-in-circle"/></svg><span>Receipts</span></button>
+      <span class="side-nav-label admin-nav-label" hidden>Administration</span>
+      <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-admin" data-tab="admin" hidden><svg class="icon" aria-hidden="true"><use href="#i-shield"/></svg><span>Admin Panel</span></button>
     </nav>
 
     <div class="side-foot">
-      <span class="side-foot-text">Material Management<br>&amp; Site Accounts</span>
+      <div id="userChip" class="user-chip" hidden>
+        <span id="userChipAvatar"></span>
+        <span class="user-chip-text">
+          <strong id="userChipName"></strong>
+          <small id="userChipRole"></small>
+        </span>
+      </div>
+      <button id="btnChangePw" class="side-logout" type="button" hidden><svg class="icon" aria-hidden="true"><use href="#i-key"/></svg>Change Password</button>
       <button id="btnLogout" class="side-logout" type="button" hidden><svg class="icon" aria-hidden="true"><use href="#i-logout"/></svg>Logout</button>
     </div>
   </aside>
@@ -889,6 +914,121 @@
           </div>
         </section>
 
+        <!-- ══ Admin Panel (sirf admin role) ═════════════════════════ -->
+        <section id="tab-admin" class="tab-panel">
+          <div class="stats-row">
+            <div class="stat-card">
+              <span class="stat-icon si-indigo"><svg class="icon"><use href="#i-users"/></svg></span>
+              <div class="stat-body"><span class="stat-label">Total Users</span><span class="stat-value" id="statUserTotal">0</span></div>
+            </div>
+            <div class="stat-card">
+              <span class="stat-icon si-green"><svg class="icon"><use href="#i-check-circle"/></svg></span>
+              <div class="stat-body"><span class="stat-label">Active Users</span><span class="stat-value" id="statUserActive">0</span></div>
+            </div>
+            <div class="stat-card">
+              <span class="stat-icon si-violet"><svg class="icon"><use href="#i-shield"/></svg></span>
+              <div class="stat-body"><span class="stat-label">Roles</span><span class="stat-value" id="statRoleTotal">0</span></div>
+            </div>
+          </div>
+
+          <div class="admin-subtabs" role="tablist" aria-label="Admin sections">
+            <button class="sub-btn active" data-sub="users">Users</button>
+            <button class="sub-btn" data-sub="roles">Roles &amp; Permissions</button>
+            <button class="sub-btn" data-sub="audit">Audit Log</button>
+          </div>
+
+          <!-- ── Users ── -->
+          <div id="sub-users" class="admin-sub active">
+            <div class="card">
+              <div class="card-head"><h2 id="formUserTitle">Add User</h2></div>
+              <form id="formUser" class="entry-form" autocomplete="off">
+                <div class="field"><label for="formUser-email">Email</label><input id="formUser-email" type="email" name="email" autocomplete="off" required></div>
+                <div class="field"><label for="formUser-full_name">Full Name</label><input id="formUser-full_name" type="text" name="full_name" placeholder="optional"></div>
+                <div class="field"><label for="formUser-role_id">Role</label><select id="formUser-role_id" name="role_id" required></select></div>
+                <div class="field"><label for="formUser-phone">Mobile</label><input id="formUser-phone" type="text" name="phone" placeholder="optional"></div>
+                <div class="field field-status" hidden><label for="formUser-status">Status</label>
+                  <select id="formUser-status" name="status"><option>Active</option><option>Inactive</option></select>
+                </div>
+                <button type="submit" class="btn btn-primary field-wide"><svg class="icon"><use href="#i-plus"/></svg>Add User</button>
+              </form>
+              <p class="hint">User ko email par invite link jaati hai — wo khud apna password set karke login karta hai. Add karne ke baad “Access” button se client/site assign karo.</p>
+            </div>
+
+            <div class="card">
+              <div class="card-head">
+                <h2>All Users <span class="count-pill" id="userTableCount">0</span></h2>
+                <label class="table-search-wrap"><svg class="icon"><use href="#i-search"/></svg>
+                  <input type="text" class="table-search" data-filter="userTable" placeholder="Search users…"></label>
+              </div>
+              <div class="table-wrap">
+                <table id="userTable">
+                  <thead><tr><th scope="col">User</th><th scope="col">Email</th><th scope="col">Role</th><th scope="col">Access</th><th scope="col">Last Login</th><th scope="col">Status</th><th scope="col"></th></tr></thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── Roles & Permissions ── -->
+          <div id="sub-roles" class="admin-sub">
+            <div class="grid-2 grid-even">
+              <div class="card">
+                <div class="card-head"><h2>Add Role</h2></div>
+                <form id="formRole" class="entry-form">
+                  <div class="field"><label for="formRole-name">Role Name</label><input id="formRole-name" type="text" name="name" placeholder="e.g. Site Engineer" required></div>
+                  <div class="field field-wide"><label for="formRole-description">Description</label><input id="formRole-description" type="text" name="description" placeholder="optional"></div>
+                  <button type="submit" class="btn btn-primary field-wide"><svg class="icon"><use href="#i-plus"/></svg>Add Role</button>
+                </form>
+              </div>
+              <div class="card">
+                <div class="card-head"><h2>All Roles <span class="count-pill" id="roleTableCount">0</span></h2></div>
+                <div class="table-wrap">
+                  <table id="roleTable">
+                    <thead><tr><th scope="col">Role</th><th scope="col">Description</th><th scope="col" class="num">Users</th><th scope="col"></th></tr></thead>
+                    <tbody></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-head">
+                <h2>Permission Matrix</h2>
+                <div class="card-tools">
+                  <select id="permRoleSelect" aria-label="Select role"></select>
+                  <button id="btnSaveMatrix" class="btn btn-primary btn-sm">Save Permissions</button>
+                </div>
+              </div>
+              <p class="hint" id="matrixHint">Row = module, column = action. View off karne se module us role ke users ko dikhna band ho jaata hai.</p>
+              <div class="table-wrap">
+                <table id="permMatrixTable" class="matrix-table"><thead></thead><tbody></tbody></table>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── Audit Log ── -->
+          <div id="sub-audit" class="admin-sub">
+            <div class="card">
+              <div class="card-head">
+                <h2>Audit Log <span class="count-pill" id="auditTableCount">0</span></h2>
+                <button id="btnAuditRefresh" class="btn btn-secondary btn-sm">Refresh</button>
+              </div>
+              <div class="filter-bar">
+                <div class="field"><label for="fltAudUser">User</label><input type="text" id="fltAudUser" placeholder="email"></div>
+                <div class="field"><label for="fltAudModule">Module</label><select id="fltAudModule"><option value="">— all —</option></select></div>
+                <div class="field"><label for="fltAudFrom">From Date</label><input type="date" id="fltAudFrom"></div>
+                <div class="field"><label for="fltAudTo">To Date</label><input type="date" id="fltAudTo"></div>
+              </div>
+              <div class="table-wrap">
+                <table id="auditTable">
+                  <thead><tr><th scope="col">Time (UTC)</th><th scope="col">User</th><th scope="col">Action</th><th scope="col">Module</th><th scope="col">Detail</th><th scope="col">IP</th></tr></thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
       </main>
     </div>
 
@@ -920,6 +1060,45 @@
       <div class="modal-actions">
         <button type="button" class="btn btn-secondary" data-close-modal>Cancel</button>
         <button type="submit" class="btn btn-primary">Save Client</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div id="modalAccess" class="modal-overlay" hidden>
+  <div class="modal modal-wide modal-access" role="dialog" aria-modal="true" aria-labelledby="modalAccessTitle">
+    <h2 id="modalAccessTitle">User Access</h2>
+    <p class="modal-sub">Client/site assignment + module-level overrides. Override khali (—) chhodo to role ki permission lagti hai.</p>
+    <div class="access-grid">
+      <div class="access-col">
+        <h3>Client &amp; Site Assignment</h3>
+        <p class="hint">Client tick karne se uski <strong>saari sites</strong> milti hain. Sirf kuch sites deni ho to client ko untick rakh kar niche sites tick karo.</p>
+        <div id="accessTree" class="access-tree"></div>
+      </div>
+      <div class="access-col">
+        <h3>Module Permission Overrides</h3>
+        <div class="table-wrap">
+          <table id="overrideTable" class="matrix-table"><thead></thead><tbody></tbody></table>
+        </div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-secondary" data-close-modal>Cancel</button>
+      <button type="button" id="btnSaveAccess" class="btn btn-primary">Save Access</button>
+    </div>
+  </div>
+</div>
+
+<div id="modalChangePw" class="modal-overlay" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalChangePwTitle">
+    <h2 id="modalChangePwTitle">Change Password</h2>
+    <form id="formChangePw" class="modal-client-form">
+      <div class="field field-wide"><label for="formChangePw-current">Current Password</label><input id="formChangePw-current" type="password" name="current_password" autocomplete="current-password" required></div>
+      <div class="field field-wide"><label for="formChangePw-new">New Password <span class="hint">min 6 chars</span></label><input id="formChangePw-new" type="password" name="new_password" autocomplete="new-password" required minlength="6"></div>
+      <div class="field field-wide"><label for="formChangePw-confirm">Confirm New Password</label><input id="formChangePw-confirm" type="password" name="confirm_password" autocomplete="new-password" required></div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" data-close-modal>Cancel</button>
+        <button type="submit" class="btn btn-primary">Update Password</button>
       </div>
     </form>
   </div>
